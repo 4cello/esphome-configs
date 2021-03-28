@@ -1,0 +1,76 @@
+substitutions:
+    devicename: hydroponics
+
+esphome:
+  name: $devicename
+  platform: ESP32
+  board: nodemcu-32s
+
+wifi:
+  ssid: !secret ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$devicename"
+    password: !secret ap_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+mqtt:
+    broker: !secret mqtt_broker 
+    topic_prefix: esphome/$devicename
+    username: !secret mqtt_username
+    password: !secret mqtt_password
+    on_message:
+      - topic: esphome/$devicename/pump_duration
+        then:
+          - lambda: |-
+              id(pump_duration) = atoi(x.c_str());
+
+globals:
+  - id: pump_duration
+    type: int
+    restore_value: no
+    initial_value: "2"
+
+sensor:
+  - platform: dht
+    pin: GPIO5
+    temperature:
+        name: Outside Temperature
+        id: outside_temperature
+    humidity:
+        name: Outside Humidity
+    update_interval: 600s
+  - platform: template
+    name: "Pump Interval"
+    lambda: |-
+        float temp = id(outside_temperature).state;
+        if (temp <= 10) { return 210*60; }
+        if (temp > 10 && temp <= 15) { return 180*60; }
+        if (temp > 15 && temp <= 20) { return 120*60; }
+        if (temp > 20 && temp <= 25) { return 90*60; }
+        if (temp > 25 && temp <= 30) { return 60*60; }
+        if (temp > 30) { return 30*60; }
+        return 210*60;
+
+switch:
+  - platform: gpio
+    name: "Water Pump"
+    id: water_pump
+    pin: GPIO2
+    on_turn_on:
+      - delay: !lambda return id(pump_duration) * 1000;
+      - switch.turn_off: water_pump
+
+time:
+  - platform: homeassistant
