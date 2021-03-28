@@ -70,6 +70,7 @@ sensor:
         id: outside_temperature
     humidity:
         name: Outside Humidity
+        accuracy_decimals: 1
     update_interval: $temp_update
   - platform: template
     id: "pump_interval"
