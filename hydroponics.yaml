@@ -1,5 +1,7 @@
 substitutions:
     devicename: hydroponics
+    temp_update: 10s # todo: reduce this after testing
+    pump_duration: "2" # todo: measure actual pump duration
 
 esphome:
   name: $devicename
@@ -40,21 +42,41 @@ globals:
   - id: pump_duration
     type: int
     restore_value: no
-    initial_value: "2"
+    initial_value: $pump_duration
+
+script:
+  - id: pump_and_wait
+    mode: restart
+    then:
+      - logger.log:
+          level: INFO
+          format: "Pumping water for %u seconds."
+          args: [ "id(pump_duration)" ]
+      - delay: !lambda return id(pump_duration) * 1000;
+      - switch.turn_off: water_pump
+      - logger.log:
+          level: INFO
+          format: "Watering finished. Next watering in %f seconds."
+          args: [ "id(pump_interval).state" ]
+      - delay: !lambda return id(pump_interval).state * 1000;
+      - switch.turn_on: water_pump
 
 sensor:
   - platform: dht
     pin: GPIO5
+    model: DHT22
     temperature:
         name: Outside Temperature
         id: outside_temperature
     humidity:
         name: Outside Humidity
-    update_interval: 600s
+    update_interval: $temp_update
   - platform: template
+    id: "pump_interval"
     name: "Pump Interval"
     lambda: |-
         float temp = id(outside_temperature).state;
+        return temp; // todo: remove this after testing
         if (temp <= 10) { return 210*60; }
         if (temp > 10 && temp <= 15) { return 180*60; }
         if (temp > 15 && temp <= 20) { return 120*60; }
@@ -69,8 +91,7 @@ switch:
     id: water_pump
     pin: GPIO2
     on_turn_on:
-      - delay: !lambda return id(pump_duration) * 1000;
-      - switch.turn_off: water_pump
+      - script.execute: pump_and_wait
 
 time:
   - platform: homeassistant
