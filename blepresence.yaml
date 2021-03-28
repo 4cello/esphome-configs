@@ -1,0 +1,40 @@
+substitutions:
+    devicename: blepresence
+
+esphome:
+  name: blepresence
+  platform: ESP32
+  board: nodemcu-32s
+
+wifi:
+  ssid: "TARDIS"
+  password: "Gib mal das WLAN-Passwort!"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Blepresence Fallback Hotspot"
+    password: "liT999DjyZsm"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+mqtt:
+    broker: nextpi.fritz.box
+    topic_prefix: esphome/$devicename
+
+esp32_ble_tracker:
+
+binary_sensor:
+  - platform: ble_presence
+    mac_address: "B0:B4:48:F8:7E:C5"
+    name: "Pebble Time Steel"
+  - platform: ble_presence
+    mac_address: "6E:3D:20:18:C6:83"
+    name: "Pebble Time Steel 2"

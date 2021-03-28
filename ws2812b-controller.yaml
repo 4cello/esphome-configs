@@ -1,0 +1,49 @@
+substitutions:
+    uuid: 7f23a1
+    devicename: ledcontroller_$uuid 
+
+esphome:
+  name: $devicename
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$devicename"
+    password: !secret ap_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+mqtt:
+    broker: !secret mqtt_broker 
+    topic_prefix: esphome/$devicename
+    username: !secret mqtt_username
+    password: !secret mqtt_password
+
+light:
+  - platform: fastled_clockless
+    chipset: WS2812B
+    pin: D1
+    num_leds: 150
+    rgb_order: BRG
+    name: "WS2812B Light"
+    effects:
+      - addressable_rainbow:
+      - addressable_scan:
+          scan_width: 3
+      - addressable_twinkle:
+      - addressable_random_twinkle:
+      - addressable_fireworks:
+      - addressable_flicker:

@@ -1,0 +1,137 @@
+substitutions:
+    uuid: 54e2f2 
+    devicename: pir_$uuid 
+
+esphome:
+  name: $devicename
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$devicename"
+    password: !secret ap_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+mqtt:
+    broker: !secret mqtt_broker 
+    topic_prefix: esphome/$devicename
+
+binary_sensor:
+  - platform: gpio
+    pin: D2
+    name: $devicename
+    device_class: motion
+  - platform: template
+    name: "RF A"
+    id: rf_a
+  - platform: template
+    name: "RF B"
+    id: rf_b
+  - platform: template
+    name: "RF C"
+    id: rf_c
+  - platform: template
+    name: "RF D"
+    id: rf_d
+  - platform: remote_receiver
+    discovery: False
+    internal: True
+    name: "A on"
+    rc_switch_raw:
+        code: "000000000000010101010001"
+        protocol: 1
+    on_press:
+      - binary_sensor.template.publish:
+            id: rf_a
+            state: ON
+  - platform: remote_receiver
+    discovery: False
+    internal: True
+    name: "A off"
+    rc_switch_raw:
+        code: "000000000000010101010100"
+        protocol: 1
+    on_press:
+      - binary_sensor.template.publish:
+            id: rf_a
+            state: OFF
+  - platform: remote_receiver
+    discovery: False
+    internal: True
+    name: "B on"
+    rc_switch_raw:
+        code: "000000000001000101010001"
+        protocol: 1
+    on_press:
+      - binary_sensor.template.publish:
+            id: rf_b
+            state: ON
+  - platform: remote_receiver
+    discovery: False
+    internal: True
+    name: "B off"
+    rc_switch_raw:
+        code: "000000000001000101010100"
+        protocol: 1
+    on_press:
+      - binary_sensor.template.publish:
+            id: rf_b
+            state: OFF
+  - platform: remote_receiver
+    discovery: False
+    internal: True
+    name: "C on"
+    rc_switch_raw:
+        code: "000000000001010001010001"
+        protocol: 1
+    on_press:
+      - binary_sensor.template.publish:
+            id: rf_c
+            state: ON
+  - platform: remote_receiver
+    discovery: False
+    internal: True
+    name: "C off"
+    rc_switch_raw:
+        code: "000000000001010001010100"
+        protocol: 1
+    on_press:
+      - binary_sensor.template.publish:
+            id: rf_c
+            state: OFF
+  - platform: remote_receiver
+    discovery: False
+    internal: True
+    name: "D on"
+    rc_switch_raw:
+        code: "000000000001010100010001"
+        protocol: 1
+    on_press:
+      - binary_sensor.template.publish:
+            id: rf_d
+            state: ON
+  - platform: remote_receiver
+    discovery: False
+    internal: True
+    name: "D off"
+    rc_switch_raw:
+        code: "000000000001010100010100"
+        protocol: 1
+    on_press:
+      - binary_sensor.template.publish:
+            id: rf_d
+            state: OFF

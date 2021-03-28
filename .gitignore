@@ -157,3 +157,5 @@ Thumbs.db #thumbnail cache on Windows
 
 
 # End of https://www.toptal.com/developers/gitignore/api/platformio,python
+
+secrets.yaml
