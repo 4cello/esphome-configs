@@ -1,7 +1,7 @@
 substitutions:
     devicename: hydroponics
     temp_update: 10s # todo: reduce this after testing
-    pump_duration: "2" # todo: measure actual pump duration
+    pump_duration: "30" # todo: measure actual pump duration
 
 esphome:
   name: $devicename
@@ -77,7 +77,7 @@ sensor:
     name: "Pump Interval"
     lambda: |-
         float temp = id(outside_temperature).state;
-        return temp; // todo: remove this after testing
+        return temp * 10; // todo: remove this after testing
         if (temp <= 10) { return 210*60; }
         if (temp > 10 && temp <= 15) { return 180*60; }
         if (temp > 15 && temp <= 20) { return 120*60; }
