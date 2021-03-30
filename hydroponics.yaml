@@ -7,6 +7,7 @@ esphome:
   name: $devicename
   platform: ESP32
   board: nodemcu-32s
+  build_path: build/$devicename
 
 wifi:
   ssid: !secret ssid
@@ -77,7 +78,6 @@ sensor:
     name: "Pump Interval"
     lambda: |-
         float temp = id(outside_temperature).state;
-        return temp * 10; // todo: remove this after testing
         if (temp <= 10) { return 210*60; }
         if (temp > 10 && temp <= 15) { return 180*60; }
         if (temp > 15 && temp <= 20) { return 120*60; }

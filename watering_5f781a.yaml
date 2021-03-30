@@ -8,6 +8,7 @@ esphome:
   name: $devicename
   platform: ESP32
   board: nodemcu-32s
+  build_path: build/$devicename
   # on_boot:
   #   priority: 600
   #   then:

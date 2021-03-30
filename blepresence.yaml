@@ -5,6 +5,7 @@ esphome:
   name: blepresence
   platform: ESP32
   board: nodemcu-32s
+  build_path: build/$devicename
 
 wifi:
   ssid: "TARDIS"

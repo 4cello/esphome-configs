@@ -5,6 +5,7 @@ esphome:
   name: $devicename
   platform: ESP8266
   board: esp01
+  build_path: build/$devicename
 
 wifi:
   ssid: !secret ssid
