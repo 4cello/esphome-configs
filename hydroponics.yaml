@@ -64,7 +64,7 @@ script:
 
 sensor:
   - platform: dht
-    pin: GPIO5
+    pin: GPIO21
     model: DHT22
     temperature:
         name: Outside Temperature
