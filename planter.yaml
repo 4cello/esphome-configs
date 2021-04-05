@@ -34,10 +34,10 @@ mqtt:
 
 output:
   - platform: gpio
-    pin: 2
-    id: gpio_2
+    pin: 1
+    id: light_out
 
 light:
   - platform: binary
     name: "Planter Light"
-    output: gpio_2
+    output: light_out

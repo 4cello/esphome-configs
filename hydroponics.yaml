@@ -62,6 +62,9 @@ script:
       - delay: !lambda return id(pump_interval).state * 1000;
       - switch.turn_on: water_pump
 
+dallas:
+  - pin: GPIO17
+
 sensor:
   - platform: dht
     pin: GPIO21
@@ -73,6 +76,9 @@ sensor:
         name: Outside Humidity
         accuracy_decimals: 1
     update_interval: $temp_update
+  - platform: dallas
+    name: Water Temperature
+    address: 0xE20120501EED9628
   - platform: template
     id: "pump_interval"
     name: "Pump Interval"
@@ -90,7 +96,7 @@ switch:
   - platform: gpio
     name: "Water Pump"
     id: water_pump
-    pin: GPIO2
+    pin: GPIO25
     on_turn_on:
       - script.execute: pump_and_wait
 
