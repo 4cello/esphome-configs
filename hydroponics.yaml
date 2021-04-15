@@ -45,6 +45,23 @@ mqtt:
         then:
           - lambda: |-
               id(pump_duration) = atoi(x.c_str());
+#      - topic: esphome/$devicename/ota_mode
+#        payload: "ON"
+#        then:
+#          - deep_sleep.prevent: deep_sleep_1
+#          - mqtt.publish:
+#              topic: esphome/$devicename/ota_mode
+#              payload: "OFF"
+#      - topic: esphome/$devicename/sleep_mode
+#        payload: "ON"
+#        then:
+#          - deep_sleep.enter: deep_sleep_1
+
+#deep_sleep:
+#  id: deep_sleep_1
+#  run_duration: 10s
+#  sleep_duration: 10min
+
 
 globals:
   - id: pump_duration

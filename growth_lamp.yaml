@@ -1,0 +1,44 @@
+substitutions:
+    devicename: growth_lamp 
+
+esphome:
+  name: $devicename
+  platform: ESP8266
+  board: nodemcuv2
+  build_path: build/$devicename
+
+wifi:
+  ssid: !secret ssid
+  password: !secret wifi_password
+  use_address: 192.168.144.95
+  manual_ip:
+    static_ip: 192.168.144.182
+    gateway: 192.168.144.1
+    subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$devicename"
+    password: !secret ap_password
+
+# Enable logging
+logger:
+  baud_rate: 0
+
+ota:
+
+mqtt:
+    broker: !secret mqtt_broker 
+    topic_prefix: esphome/$devicename
+    username: !secret mqtt_username
+    password: !secret mqtt_password
+
+output:
+  - platform: gpio
+    pin: D2
+    id: light_out
+
+light:
+  - platform: binary
+    name: $devicename Light
+    output: light_out
