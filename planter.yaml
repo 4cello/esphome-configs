@@ -34,9 +34,9 @@ mqtt:
 
 output:
   - platform: gpio
-    pin: 1
+    pin: 2
     id: light_out
-    inverted: True
+    #    inverted: True
 
 light:
   - platform: binary
