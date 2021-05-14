@@ -1,7 +1,7 @@
 substitutions:
     devicename: hydroponics
-    temp_update: 10s # todo: reduce this after testing
-    pump_duration: "30" # todo: measure actual pump duration
+    temp_update: 600s
+    pump_duration: "70"
 
 esphome:
   name: $devicename
@@ -12,6 +12,11 @@ esphome:
 wifi:
   ssid: !secret ssid
   password: !secret wifi_password
+
+  manual_ip:
+    static_ip: 192.168.144.180
+    gateway: 192.168.144.1
+    subnet: 255.255.255.0
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -25,6 +30,7 @@ logger:
 
 # Enable Home Assistant API
 api:
+  reboot_timeout: 0s
 
 ota:
 
@@ -33,11 +39,30 @@ mqtt:
     topic_prefix: esphome/$devicename
     username: !secret mqtt_username
     password: !secret mqtt_password
+    birth_message:
+    will_message:
     on_message:
       - topic: esphome/$devicename/pump_duration
         then:
           - lambda: |-
               id(pump_duration) = atoi(x.c_str());
+#      - topic: esphome/$devicename/ota_mode
+#        payload: "ON"
+#        then:
+#          - deep_sleep.prevent: deep_sleep_1
+#          - mqtt.publish:
+#              topic: esphome/$devicename/ota_mode
+#              payload: "OFF"
+#      - topic: esphome/$devicename/sleep_mode
+#        payload: "ON"
+#        then:
+#          - deep_sleep.enter: deep_sleep_1
+
+#deep_sleep:
+#  id: deep_sleep_1
+#  run_duration: 10s
+#  sleep_duration: 10min
+
 
 globals:
   - id: pump_duration
@@ -57,42 +82,81 @@ script:
       - switch.turn_off: water_pump
       - logger.log:
           level: INFO
-          format: "Watering finished. Next watering in %f seconds."
+          format: "Watering finished. Next watering in %f minutes."
           args: [ "id(pump_interval).state" ]
-      - delay: !lambda return id(pump_interval).state * 1000;
+      - delay: !lambda return id(pump_interval).state * 60 * 1000;
       - switch.turn_on: water_pump
+
+dallas:
+  - pin: GPIO17
+    update_interval: $temp_update
 
 sensor:
   - platform: dht
     pin: GPIO21
     model: DHT22
     temperature:
-        name: Outside Temperature
+        name: $devicename Outside Temperature
         id: outside_temperature
     humidity:
-        name: Outside Humidity
+        name: $devicename Outside Humidity
         accuracy_decimals: 1
     update_interval: $temp_update
+  - platform: adc
+    pin: GPIO32
+    attenuation: 11db
+    name: $devicename Battery Voltage
+    unit_of_measurement: "V"
+    update_interval: 600s
+    filters:
+      - multiply: 5.7
+      - calibrate_linear:
+        - 9.4 -> 9
+        - 10.6 -> 10
+        - 11.74 -> 11
+        - 13.5 -> 12
+        - 14 -> 13
+        - 15.2 -> 14
+        - 16.45 -> 15
+        - 18 -> 16
+  - platform: dallas
+    name: $devicename Water Temperature
+    address: 0xE20120501EED9628
   - platform: template
-    id: "pump_interval"
-    name: "Pump Interval"
+    id: pump_interval
+    name: $devicename Pump Interval
+    icon: mdi:timer-outline
+    unit_of_measurement: min
+    accuracy_decimals: 0
     lambda: |-
         float temp = id(outside_temperature).state;
-        if (temp <= 10) { return 210*60; }
-        if (temp > 10 && temp <= 15) { return 180*60; }
-        if (temp > 15 && temp <= 20) { return 120*60; }
-        if (temp > 20 && temp <= 25) { return 90*60; }
-        if (temp > 25 && temp <= 30) { return 60*60; }
-        if (temp > 30) { return 30*60; }
-        return 210*60;
+        int newval = 210;
+        if (temp <= 10) newval = 210;
+        if (temp > 10 && temp <= 15) newval = 180;
+        if (temp > 15 && temp <= 20) newval = 120;
+        if (temp > 20 && temp <= 25) newval = 90;
+        if (temp > 25 && temp <= 30) newval = 60;
+        if (temp > 30) newval = 30;
+        if (newval != id(pump_interval).state) return newval;
+        return {};
 
 switch:
   - platform: gpio
-    name: "Water Pump"
+    name: $devicename Water Pump
     id: water_pump
-    pin: GPIO2
+    pin: GPIO25
     on_turn_on:
       - script.execute: pump_and_wait
+  - platform: template
+    id: pump_automation_running
+    name: $devicename Pump Automation Running
+    icon: mdi:robot-industrial
+    lambda: return id(pump_and_wait).is_running();
+    turn_on_action:
+      - switch.turn_on: water_pump
+    turn_off_action:
+      - script.stop: pump_and_wait
+      - switch.turn_off: water_pump
 
 time:
   - platform: homeassistant
