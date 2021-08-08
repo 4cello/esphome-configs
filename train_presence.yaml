@@ -1,5 +1,5 @@
 substitutions:
-    devicename: growth_lamp 
+    devicename: train_presence
 
 esphome:
   name: $devicename
@@ -10,9 +10,9 @@ esphome:
 wifi:
   ssid: !secret ssid
   password: !secret wifi_password
-  #use_address: growth_lamp.fritz.box
+  #use_address: 192.168.144.182
   manual_ip:
-    static_ip: 192.168.144.182
+    static_ip: 192.168.144.93
     gateway: 192.168.144.1
     subnet: 255.255.255.0
 
@@ -35,12 +35,21 @@ mqtt:
   birth_message:
   will_message:
 
+binary_sensor:
+  - platform: gpio
+    name: "$devicename Track Section 1"   
+    pin:
+      number: D2
+      mode: INPUT_PULLUP
+    filters:
+      - delayed_on_off: 100ms
+      - invert:
+    on_press:
+      - output.turn_off: status_led 
+    on_release:
+      - output.turn_on: status_led
+
 output:
   - platform: gpio
-    pin: D2
-    id: light_out
-
-light:
-  - platform: binary
-    name: $devicename Light
-    output: light_out
+    id: status_led
+    pin: D0

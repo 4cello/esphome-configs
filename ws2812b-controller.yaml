@@ -37,13 +37,14 @@ light:
   - platform: fastled_clockless
     chipset: WS2812B
     pin: D1
-    num_leds: 150
-    rgb_order: BRG
+    num_leds: 5
+    rgb_order: GRB
     name: "WS2812B Light"
     effects:
       - addressable_rainbow:
       - addressable_scan:
-          scan_width: 3
+          move_interval: 500ms
+          scan_width: 1
       - addressable_twinkle:
       - addressable_random_twinkle:
       - addressable_fireworks:
