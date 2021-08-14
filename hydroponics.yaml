@@ -105,6 +105,7 @@ sensor:
   - platform: adc
     pin: GPIO32
     attenuation: 11db
+    id: hydroponics_battery_voltage
     name: $devicename Battery Voltage
     unit_of_measurement: "V"
     update_interval: 600s
@@ -147,6 +148,14 @@ switch:
     pin: GPIO25
     on_turn_on:
       - script.execute: pump_and_wait
+      - if:
+          condition:
+            lambda: "return id(hydroponics_battery_voltage).state < 10.7;"
+          then:
+            - switch.turn_off: water_pump
+            - logger.log:
+                level: WARN
+                format: "Battery voltage too low to pump, skipping this activation and hope for the next one."
   - platform: template
     id: pump_automation_running
     name: $devicename Pump Automation Running
