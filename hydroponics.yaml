@@ -69,6 +69,10 @@ globals:
     type: int
     restore_value: no
     initial_value: $pump_duration
+  - id: measurement_dropped
+    type: bool
+    initial_value: "false"
+    restore_value: no
 
 script:
   - id: pump_and_wait
@@ -84,6 +88,11 @@ script:
           level: INFO
           format: "Watering finished. Next watering in %f minutes."
           args: [ "id(pump_interval).state" ]
+      - if:
+          condition:
+            lambda: "return id(measurement_dropped);"
+          then:
+            - component.update: hydroponics_battery_voltage
       - delay: !lambda return id(pump_interval).state * 60 * 1000;
       - switch.turn_on: water_pump
 
@@ -110,6 +119,14 @@ sensor:
     unit_of_measurement: "V"
     update_interval: 600s
     filters:
+      - lambda: |
+          if (id(water_pump).state) {
+            id(measurement_dropped) = true;
+            return {};
+          } else {
+            id(measurement_dropped) = false;
+            return x * 1.0;
+          }
       - multiply: 5.7
       - calibrate_linear:
         - 9.4 -> 9
