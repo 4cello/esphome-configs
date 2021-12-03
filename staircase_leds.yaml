@@ -1,5 +1,5 @@
 substitutions:
-    devicename: staircase_leds
+    devicename: staircase-leds
 
 esphome:
   name: $devicename
@@ -36,7 +36,77 @@ light:
   - platform: fastled_clockless
     chipset: WS2812
     pin: D2
-    num_leds: 20
-    rgb_order: BRG
-    name: "The Light"
-    id: staircase_leds
+    num_leds: 100
+    rgb_order: RGB
+    name: "Staircase Light"
+    id: staircase_light
+    restore_mode: RESTORE_DEFAULT_ON
+    effects:
+      - addressable_rainbow:
+      - addressable_color_wipe:
+      - addressable_scan:
+      - addressable_twinkle:
+      - addressable_fireworks:
+      - addressable_flicker:
+      - addressable_lambda:
+            name: "Mod3"
+            update_interval: 50ms
+            lambda: |-
+                static uint8_t cycle = 0;
+                static uint8_t fading = 0;
+                static uint8_t dimming = 3;
+
+                if (fading < 50) {
+                    it.all().darken(dimming);
+                } else if (fading < 100) {
+                    it.all().lighten(dimming);
+                }
+                if (fading == 50) {
+                    for (int i = 0; i < it.size(); i++) {
+                        switch ((i + cycle) % 3) {
+                            case 0:
+                                it[i] = Color(100,0,0);
+                                break;
+                            case 1:
+                                it[i] = Color(0,100,0);
+                                break;
+                            case 2:
+                                it[i] = Color(0,0,100);
+                                break;
+                        }
+                    }
+                    cycle = (cycle + 1) % 3;
+                }
+                fading = (fading + 1) % 100;
+      - addressable_lambda:
+            name: "Flow White"
+            update_interval: 50ms
+            lambda: |-
+                static uint8_t cycle = 0;
+                static uint8_t fading = 0;
+                static uint8_t dimming = 3;
+
+                const uint8_t w = 80;
+
+                if (fading < 50) {
+                    it.all().darken(dimming);
+                } else if (fading < 100) {
+                    it.all().lighten(dimming);
+                }
+                if (fading == 50) {
+                    for (int i = 0; i < it.size(); i++) {
+                        switch ((i + cycle) % 3) {
+                            case 0:
+                                it[i] = Color(w,w-8,w-10);
+                                break;
+                            case 1:
+                                it[i] = Color(w,w-8,w-25);
+                                break;
+                            case 2:
+                                it[i] = Color(w,w-8,w-10);
+                                break;
+                        }
+                    }
+                    cycle = (cycle + 1) % 3;
+                }
+                fading = (fading + 1) % 100;
