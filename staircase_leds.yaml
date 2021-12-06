@@ -31,6 +31,22 @@ mqtt:
     topic_prefix: esphome/$devicename
     username: !secret mqtt_username
     password: !secret mqtt_password
+    on_message:
+        topic: esphome/$devicename/single_led
+        qos: 0
+        then:
+          - light.addressable_set:
+                id: staircase_light
+                red: 0%
+                green: 0%
+                blue: 0%
+          - light.addressable_set:
+                id: staircase_light
+                range_from: !lambda return atoi(x.c_str());
+                range_to: !lambda return atoi(x.c_str());
+                red: 80%
+                green: 80%
+                blue: 80%
 
 light:
   - platform: fastled_clockless
@@ -38,9 +54,9 @@ light:
     pin: D2
     num_leds: 100
     rgb_order: RGB
+    color_correct: [80%, 80%, 80%]
     name: "Staircase Light"
     id: staircase_light
-    restore_mode: RESTORE_DEFAULT_ON
     effects:
       - addressable_rainbow:
       - addressable_color_wipe:
