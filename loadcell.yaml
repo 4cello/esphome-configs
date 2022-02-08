@@ -31,9 +31,6 @@ captive_portal:
 # Enable logging
 logger:
 
-# Enable Home Assistant API
-api:
-
 ota:
 
 mqtt:
@@ -46,7 +43,7 @@ mqtt:
 sensor:
   - platform: hx711
     name: "HX711 Value"
-    dout_pin: D0
-    clk_pin: D1
-    gain: 64 
+    dout_pin: D1
+    clk_pin: D2
+    gain: 128
     update_interval: 1s

@@ -1,0 +1,124 @@
+substitutions:
+    devicename: curtain
+
+esphome:
+  name: $devicename
+  platform: ESP8266
+  board: d1_mini
+  build_path: build/$devicename
+
+wifi:
+  ssid: !secret ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$devicename"
+    password: !secret ap_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+ota:
+
+mqtt:
+    broker: !secret mqtt_broker 
+    topic_prefix: esphome/$devicename
+    username: !secret mqtt_username
+    password: !secret mqtt_password
+    on_message:
+      - topic: esphome/$devicename/stepper/position
+        then:
+          - stepper.report_position:
+              id: the_stepper
+              position: 0
+          - stepper.set_target:
+              id: the_stepper
+              target: !lambda return atoi(x.c_str());
+      - topic: esphome/$devicename/stepper/speed
+        then:
+          - stepper.set_speed:
+              id: the_stepper
+              speed: !lambda return atoi(x.c_str());
+      - topic: esphome/$devicename/stepper/acceleration
+        then:
+          - stepper.set_acceleration:
+              id: the_stepper
+              acceleration: !lambda return atoi(x.c_str());
+      - topic: esphome/$devicename/max_travel
+        then:
+          - lambda: |-
+              id(max_travel) = atoi(x.c_str());
+globals:
+  - id: max_travel
+    type: int
+    restore_value: yes
+    initial_value: "1000"
+
+binary_sensor:
+  - platform: gpio
+    pin: 
+      number: D5
+      inverted: true
+    id: closed_limit
+    on_press:
+      then:
+        - cover.close: the_curtain
+  - platform: gpio
+    pin: 
+      number: D6
+      inverted: true
+    id: open_limit
+    on_press:
+      then:
+        - cover.open: the_curtain
+
+stepper:
+  - platform: uln2003
+    id: the_stepper
+    pin_a: D1
+    pin_b: D2
+    pin_c: D3
+    pin_d: D4
+    max_speed: 400 steps/s
+    acceleration: 500 steps/s^2
+    sleep_when_done: true
+
+cover:
+  - platform: endstop
+    name: "Curtain"
+    id: the_curtain
+    open_action:
+      - stepper.report_position:
+          id: the_stepper
+          position: 0
+      - stepper.set_target:
+          id: the_stepper
+          target: 5000     #!lambda return id("max_travel");
+      - logger.log:
+          format: "go to position: %u"
+          args: [ "id(max_travel)" ]
+    open_duration: 30s
+    open_endstop: open_limit
+    close_action:
+      - stepper.report_position:
+          id: the_stepper
+          position: 0
+      - stepper.set_target:
+          id: the_stepper
+          target: -5000     #!lambda return -id("max_travel");
+      - logger.log:
+          format: "go to position: %u"
+          args: [ "id(max_travel)" ]
+    close_duration: 30s
+    close_endstop: closed_limit
+
+    stop_action:
+      - stepper.report_position:
+          id: the_stepper
+          position: 0
+      - stepper.set_target:
+          id: the_stepper
+          target: 0

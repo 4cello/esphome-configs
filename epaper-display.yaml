@@ -1,0 +1,71 @@
+substitutions:
+    devicename: epaper-display
+
+esphome:
+  name: $devicename
+  platform: ESP32
+  board: esp32dev
+  build_path: build/$devicename
+
+wifi:
+  ssid: !secret ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$devicename"
+    password: !secret ap_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+ota:
+
+mqtt:
+    broker: !secret mqtt_broker 
+    topic_prefix: esphome/$devicename
+    username: !secret mqtt_username
+    password: !secret mqtt_password
+
+spi:
+    clk_pin: 18
+    mosi_pin: 23
+
+esp32_ble_tracker:
+
+ble_client:
+  - mac_address: FF:0F:F5:45:B9:32
+    id: barcode_scanner
+
+sensor:
+  - platform: ble_client
+    ble_client_id: barcode_scanner
+    name: "2a4d"
+    service_uuid: "1812"
+    characteristic_uuid: "2a4d"
+    descriptor_uuid: "2908"
+    notify: true
+
+display:
+  - platform: waveshare_epaper
+    cs_pin: 5
+    dc_pin: 17
+    busy_pin: 4
+    reset_pin: 16
+    model: 2.13in-ttgo-b74
+    full_update_every: 180
+    update_interval: 10s
+    lambda: |-
+        // Draw a line from [0,0] to [100,50]
+        it.line(0, 0, 100, 50);
+        // Draw the outline of a rectangle with the top left at [50,60], a width of 30 and a height of 42
+        it.rectangle(50, 60, 30, 42);
+        // Draw the same rectangle, but this time filled.
+        it.filled_rectangle(50, 60, 30, 42);
+    
+        // Circles! Let's draw one with the center at [25,25] and a radius of 10
+        it.circle(25, 25, 10);
+        // ... and the same thing filled again
+        it.filled_circle(25, 25, 10);
