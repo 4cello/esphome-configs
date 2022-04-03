@@ -3,8 +3,8 @@ substitutions:
 
 esphome:
   name: $devicename
-  platform: ESP8266
-  board: nodemcuv2
+  platform: ESP32
+  board: nodemcu-32s
   build_path: build/$devicename
 
 wifi:
@@ -51,12 +51,12 @@ mqtt:
 servo:
   - id: servo1
     output: pwm1
-    min_level: 3%
-    idle_level: 8%
-    max_level: 13%
+    #min_level: 3%
+    #idle_level: 8%
+    #max_level: 13%
 
 output:
   - id: pwm1
-    platform: esp8266_pwm
-    pin: D1
+    platform: ledc
+    pin: GPIO19
     frequency: 50Hz

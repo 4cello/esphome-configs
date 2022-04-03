@@ -96,10 +96,7 @@ cover:
           position: 0
       - stepper.set_target:
           id: the_stepper
-          target: 5000     #!lambda return id("max_travel");
-      - logger.log:
-          format: "go to position: %u"
-          args: [ "id(max_travel)" ]
+          target: 12000     #!lambda return id("max_travel");
     open_duration: 30s
     open_endstop: open_limit
     close_action:
@@ -108,10 +105,7 @@ cover:
           position: 0
       - stepper.set_target:
           id: the_stepper
-          target: -5000     #!lambda return -id("max_travel");
-      - logger.log:
-          format: "go to position: %u"
-          args: [ "id(max_travel)" ]
+          target: -12000     #!lambda return -id("max_travel");
     close_duration: 30s
     close_endstop: closed_limit
 

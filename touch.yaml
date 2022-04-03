@@ -6,6 +6,9 @@ esphome:
   platform: ESP32
   board: nodemcu-32s
   build_path: build/$devicename
+  on_boot:
+    then:
+      - output.turn_off: gpio_led
 
 wifi:
   ssid: !secret ssid
@@ -21,9 +24,6 @@ captive_portal:
 # Enable logging
 logger:
 
-# Enable Home Assistant API
-api:
-
 ota:
 
 mqtt:
@@ -32,11 +32,42 @@ mqtt:
     username: !secret mqtt_username
     password: !secret mqtt_password
 
+deep_sleep:
+#    run_duration: 20s
+#    sleep_duration: 10min
+    touch_wakeup: True
+    id: d_sleep
+
+script:
+  - id: sleep_script
+    then:
+      - delay: 5s
+#      - deep_sleep.enter:
+#          id: d_sleep
+#          sleep_duration: 10min
+
 esp32_touch:
-    setup_mode: True
+    setup_mode: False
 
 binary_sensor:
   - platform: esp32_touch
     pin: GPIO27
-    threshold: 1000
+    device_class: occupancy
+    threshold: 9
+    wakeup_threshold: 9
     id: touchy
+    filters:
+      - delayed_off: 200ms
+    on_press:
+      then:
+        - output.turn_on: gpio_led
+        - script.stop: sleep_script
+    on_release:
+      then:
+        - output.turn_off: gpio_led
+        - script.execute: sleep_script
+
+output:
+  - platform: gpio
+    pin: GPIO19
+    id: gpio_led
