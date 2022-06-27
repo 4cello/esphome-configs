@@ -88,6 +88,7 @@ stepper:
 
 cover:
   - platform: endstop
+    device_class: curtain
     name: "Curtain"
     id: the_curtain
     open_action:

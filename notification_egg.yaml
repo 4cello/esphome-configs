@@ -1,0 +1,121 @@
+substitutions:
+    devicename: notification-egg
+
+esphome:
+  name: $devicename
+  platform: ESP8266
+  board: nodemcuv2
+  build_path: build/$devicename
+
+wifi:
+  ssid: !secret ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$devicename"
+    password: !secret ap_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+mqtt:
+    broker: !secret mqtt_broker 
+    topic_prefix: esphome/$devicename
+    username: !secret mqtt_username
+    password: !secret mqtt_password
+
+font:
+  - file: "fonts/comic.ttf"
+    id: comicsans
+    size: 20
+  # gfonts://family[@weight]
+  - file: "gfonts://Roboto"
+    id: roboto
+    size: 20
+
+i2c:
+  sda: D2
+  scl: D3
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    reset_pin: D0
+    address: 0x3C
+    lambda: |-
+      it.print(0, 0, id(comicsans), "Hello World!");
+      it.print(0, 30, id(roboto), "Hello World!");
+
+light:
+  - platform: neopixelbus
+    variant: SK6812
+    type: GRBW
+    pin: D1
+    num_leds: 35
+    name: "Notification Light"
+    effects:
+      - pulse:
+          name: Normal Pulse
+      - pulse:
+          name: Short Pulse
+          transition_length: 0.5s
+          update_interval: 5s
+      - pulse:
+          name: Super Short Pulse
+          transition_length: 0.3s
+          update_interval: 5s
+      - addressable_rainbow:
+      - addressable_scan:
+      - addressable_scan:
+          name: Width 2
+          scan_width: 2
+      - addressable_scan:
+          name: Width 3
+          scan_width: 3
+      - addressable_color_wipe:
+          name: Wipe
+          add_led_interval: 30ms
+          colors:
+            - red: 100%
+              green: 0%
+              blue: 0%
+              white: 0%
+              num_leds: 3
+            - red: 0%
+              green: 0%
+              blue: 0%
+              white: 0%
+              num_leds: 8
+            - red: 0%
+              green: 100%
+              blue: 0%
+              white: 0%
+              num_leds: 3
+            - red: 0%
+              green: 0%
+              blue: 0%
+              white: 0%
+              num_leds: 10
+            - red: 0%
+              green: 0%
+              blue: 100%
+              white: 0%
+              num_leds: 3
+            - red: 0%
+              green: 0%
+              blue: 0%
+              white: 0%
+              num_leds: 10
+            - red: 0%
+              green: 0%
+              blue: 0%
+              white: 0%
+              num_leds: 2
