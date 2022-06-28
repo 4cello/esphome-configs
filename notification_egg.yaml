@@ -21,10 +21,6 @@ time:
 
 captive_portal:
 
-# Enable logging
-logger:
-  level: INFO
-
 ota:
 
 globals:
@@ -45,6 +41,145 @@ globals:
       {
         0,0,0,0,0,0
       }
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          uint8_t len = sizeof(id(colors)) / sizeof(Color*);
+          auto now = id(sntp_time).now();
+          if (!now.is_valid()) 
+            return;
+          time_t utc = now.timestamp;
+          for (uint8_t i = 0; i < len; i++) {
+            time_t old = id(pending_notifications)[i];
+            if (!old) continue;
+            if (utc >= old) {
+              id(pending_notifications)[i] = 0;
+              ESP_LOGI("interval", "reset %u: %lli >= %lli", i, utc, old);
+            }
+          }
+
+mqtt:
+  on_message:
+    - topic: "esphome/$devicename/notify/red"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for RED: %s"
+          args: ["x.c_str()" ]
+          
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[0];
+          if (end > old)
+            id(pending_notifications)[0] = end;
+    - topic: "esphome/$devicename/notify/green"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for GREEN: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[1];
+          if (end > old)
+            id(pending_notifications)[1] = end;
+    - topic: "esphome/$devicename/notify/blue"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for BLUE: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[2];
+          if (end > old)
+            id(pending_notifications)[2] = end;
+    - topic: "esphome/$devicename/notify/yellow"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for YELLOW: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[3];
+          if (end > old)
+            id(pending_notifications)[3] = end;
+    - topic: "esphome/$devicename/notify/cyan"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for CYAN: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[4];
+          if (end > old)
+            id(pending_notifications)[4] = end;
+    - topic: "esphome/$devicename/notify/magenta"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for MAGENTA: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[5];
+          if (end > old)
+            id(pending_notifications)[5] = end;
+
+button:
+  - platform: template
+    name: "Test RED notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/red"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test GREEN notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/green"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test BLUE notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/blue"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test YELLOW notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/yellow"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test CYAN notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/cyan"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test MAGENTA notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/magenta"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+
 
 font:
   - file: "fonts/comic.ttf"
@@ -80,6 +215,7 @@ light:
     num_leds: 35
     name: "Notification Light"
     id: notification_light
+    entity_category: config
     effects:
       - addressable_lambda:
           name: "THE notification effect"
@@ -124,9 +260,9 @@ light:
                 ESP_LOGD("notify_effect", "preparing next color");
                 // prepare next color
                 cycles_until_color_ends = COLOR_WIDTH;
-                if (notification_class == COLOR_COUNT-1) {
-                  ESP_LOGD("notify_effect", "nc == COLOR_COUNT-1: resetting cunc");
-                  // we're at notification_class == COLOR_COUNT-1
+                if (notification_class >= COLOR_COUNT-1) {
+                  ESP_LOGD("notify_effect", "nc >= COLOR_COUNT-1: resetting cunc");
+                  // we're at notification_class >= COLOR_COUNT-1
                   // reset notification_class and prepare for full cycle
                   notification_class = 0;
                   cycles_until_next_color = BETWEEN_CYCLES;
@@ -150,7 +286,7 @@ light:
                   } else {
                     // we arrived at notification_class == 0 without finding an active class
                     // reset notification_class and prepare for full cycle
-                    notification_class = COLOR_COUNT;
+                    notification_class = 0;
                     cycles_until_next_color = BETWEEN_CYCLES;
                   }
                 }

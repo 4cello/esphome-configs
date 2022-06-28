@@ -13,11 +13,11 @@ mqtt:
 
 sensor:
   - platform: uptime
-    name: Uptime Sensor
+    name: $devicename Uptime Sensor
   - platform: wifi_signal
-    name: WiFi Signal Sensor
+    name: $devicename  WiFi Signal Sensor
     update_interval: 60s
 
 binary_sensor:
   - platform: status
-    name: Status
+    name: $devicename Status
