@@ -1,25 +1,15 @@
 substitutions:
     devicename: curtain
 
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
+
 esphome:
-  name: $devicename
   platform: ESP8266
   board: d1_mini
-  build_path: build/$devicename
-
-wifi:
-  ssid: !secret ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "$devicename"
-    password: !secret ap_password
 
 captive_portal:
-
-# Enable logging
-logger:
 
 ota:
 

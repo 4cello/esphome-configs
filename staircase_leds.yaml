@@ -1,52 +1,35 @@
 substitutions:
-    devicename: staircase-leds
+  devicename: staircase-leds
+
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
 
 esphome:
-  name: $devicename
   platform: ESP8266
   board: d1_mini
-  build_path: build/$devicename
-
-wifi:
-  ssid: !secret ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "$devicename"
-    password: !secret ap_password
 
 captive_portal:
-
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-api:
 
 ota:
 
 mqtt:
-    broker: !secret mqtt_broker 
-    topic_prefix: esphome/$devicename
-    username: !secret mqtt_username
-    password: !secret mqtt_password
-    on_message:
-        topic: esphome/$devicename/single_led
-        qos: 0
-        then:
-          - light.addressable_set:
-                id: staircase_light
-                red: 0%
-                green: 0%
-                blue: 0%
-          - light.addressable_set:
-                id: staircase_light
-                range_from: !lambda return atoi(x.c_str());
-                range_to: !lambda return atoi(x.c_str());
-                red: 80%
-                green: 80%
-                blue: 80%
+  on_message:
+    topic: esphome/$devicename/single_led
+    qos: 0
+    then:
+      - light.addressable_set:
+          id: staircase_light
+          red: 0%
+          green: 0%
+          blue: 0%
+      - light.addressable_set:
+          id: staircase_light
+          range_from: !lambda return atoi(x.c_str());
+          range_to: !lambda return atoi(x.c_str());
+          red: 80%
+          green: 80%
+          blue: 80%
 
 wled:
 

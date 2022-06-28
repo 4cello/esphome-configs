@@ -2,27 +2,14 @@ substitutions:
     devicename: blepresence
 
 esphome:
-  name: blepresence
   platform: ESP32
   board: nodemcu-32s
-  build_path: build/$devicename
 
-wifi:
-  ssid: "TARDIS"
-  password: "Gib mal das WLAN-Passwort!"
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Blepresence Fallback Hotspot"
-    password: "liT999DjyZsm"
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
 
 captive_portal:
-
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-api:
 
 ota:
 

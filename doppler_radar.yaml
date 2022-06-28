@@ -1,52 +1,38 @@
 substitutions:
     devicename: doppler-radar
 
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
+
 esphome:
-  name: $devicename
   platform: ESP8266
   board: nodemcuv2
-  build_path: build/$devicename
-
-wifi:
-  ssid: !secret ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "$devicename"
-    password: !secret ap_password
 
 captive_portal:
-
-# Enable logging
-logger:
 
 ota:
 
 mqtt:
-    broker: !secret mqtt_broker 
-    topic_prefix: esphome/$devicename
-    username: !secret mqtt_username
-    password: !secret mqtt_password
-    on_message:
-      - topic: esphome/$devicename/curtain1/position
-        then:
-          - stepper.report_position:
-                id: curtain1
-                position: 0
-          - stepper.set_target:
-                id: curtain1
-                target: !lambda return atoi(x.c_str());
-      - topic: esphome/$devicename/curtain1/speed
-        then:
-          - stepper.set_speed:
-                id: curtain1
-                speed: !lambda return atoi(x.c_str());
-      - topic: esphome/$devicename/curtain1/acceleration
-        then:
-        - stepper.set_acceleration:
-            id: curtain1
-            acceleration: !lambda return atoi(x.c_str());
+  on_message:
+    - topic: esphome/$devicename/curtain1/position
+      then:
+        - stepper.report_position:
+              id: curtain1
+              position: 0
+        - stepper.set_target:
+              id: curtain1
+              target: !lambda return atoi(x.c_str());
+    - topic: esphome/$devicename/curtain1/speed
+      then:
+        - stepper.set_speed:
+              id: curtain1
+              speed: !lambda return atoi(x.c_str());
+    - topic: esphome/$devicename/curtain1/acceleration
+      then:
+      - stepper.set_acceleration:
+          id: curtain1
+          acceleration: !lambda return atoi(x.c_str());
 
 output:
   - id: onboard_led

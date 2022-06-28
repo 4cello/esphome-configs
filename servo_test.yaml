@@ -1,46 +1,19 @@
 substitutions:
-    devicename:  servotest
+  devicename:  servotest
+
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
 
 esphome:
-  name: $devicename
   platform: ESP32
   board: nodemcu-32s
-  build_path: build/$devicename
-
-wifi:
-  networks:
-    - ssid: !secret ssid
-      password: !secret wifi_password
-  fast_connect: true
-  
-  #manual_ip:
-  #  # Set this to the IP of the ESP
-  #  static_ip: 192.168.144.171
-  #  # Set this to the IP address of the router. Often ends with .1
-  #  gateway: 192.168.144.1
-  #  # The subnet of the network. 255.255.255.0 works for most home networks.
-  #  subnet: 255.255.255.0
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "$devicename"
-    password: !secret ap_password
 
 captive_portal:
-
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-#api:
 
 ota:
 
 mqtt:
-  broker: !secret mqtt_broker 
-  topic_prefix: esphome/$devicename
-  username: !secret mqtt_username
-  password: !secret mqtt_password
   on_message:
     topic: esphome/$devicename/servo1/command
     then:

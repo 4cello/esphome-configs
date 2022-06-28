@@ -1,37 +1,17 @@
 substitutions:
     devicename: rotenc
 
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
+
 esphome:
-  name: $devicename
   platform: ESP8266
   board: nodemcuv2
-  build_path: build/$devicename
-
-wifi:
-  ssid: !secret ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "$devicename"
-    password: !secret ap_password
 
 captive_portal:
 
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-api:
-
 ota:
-
-mqtt:
-    broker: !secret mqtt_broker 
-    topic_prefix: esphome/$devicename
-    username: !secret mqtt_username
-    password: !secret mqtt_password
-
 
 sensor:
   - platform: rotary_encoder

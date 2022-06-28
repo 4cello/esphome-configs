@@ -1,36 +1,20 @@
 substitutions:
-    devicename: touch
+  devicename: touch
+
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
 
 esphome:
-  name: $devicename
   platform: ESP32
   board: nodemcu-32s
-  build_path: build/$devicename
   on_boot:
     then:
       - output.turn_off: gpio_led
 
-wifi:
-  ssid: !secret ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "$devicename"
-    password: !secret ap_password
-
 captive_portal:
 
-# Enable logging
-logger:
-
 ota:
-
-mqtt:
-    broker: !secret mqtt_broker 
-    topic_prefix: esphome/$devicename
-    username: !secret mqtt_username
-    password: !secret mqtt_password
 
 deep_sleep:
 #    run_duration: 20s
