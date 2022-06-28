@@ -1,0 +1,20 @@
+esphome:
+  name: $devicename
+  build_path: build/$devicename
+
+mqtt:
+  broker: !secret mqtt_broker 
+  topic_prefix: esphome/$devicename
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+
+sensor:
+  - platform: uptime
+    name: Uptime Sensor
+  - platform: wifi_signal
+    name: WiFi Signal Sensor
+    update_interval: 60s
+
+binary_sensor:
+  - platform: status
+    name: Status

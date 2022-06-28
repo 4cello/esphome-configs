@@ -1,36 +1,50 @@
 substitutions:
-    devicename: notification-egg
+  devicename: notification-egg
+
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
 
 esphome:
-  name: $devicename
   platform: ESP8266
-  board: nodemcuv2
-  build_path: build/$devicename
+  board: d1_mini
+  on_boot:
+    priority: -200
+    then:
+      - light.turn_on:
+          id: notification_light
+          effect: "THE notification effect"
 
-wifi:
-  ssid: !secret ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "$devicename"
-    password: !secret ap_password
+time:
+  - platform: sntp
+    id: sntp_time
 
 captive_portal:
 
 # Enable logging
 logger:
-
-# Enable Home Assistant API
-api:
+  level: INFO
 
 ota:
 
-mqtt:
-    broker: !secret mqtt_broker 
-    topic_prefix: esphome/$devicename
-    username: !secret mqtt_username
-    password: !secret mqtt_password
+globals:
+  - id: colors
+    type: Color[6]
+    initial_value: |-
+      {
+        Color(255,0,0,0), // red
+        Color(0,255,0,0), // green
+        Color(0,0,255,0), // blue
+        Color(255,255,0,0), // yellow
+        Color(0,255,255,0), // cyan
+        Color(255,0,255,0) // magenta
+      }
+  - id: pending_notifications
+    type: time_t[6]
+    initial_value: |-
+      {
+        0,0,0,0,0,0
+      }
 
 font:
   - file: "fonts/comic.ttf"
@@ -39,83 +53,107 @@ font:
   # gfonts://family[@weight]
   - file: "gfonts://Roboto"
     id: roboto
-    size: 20
+    size: 32
 
 i2c:
-  sda: D2
-  scl: D3
+  sda: D6
+  scl: D7
+  frequency: 400kHz
 
 display:
   - platform: ssd1306_i2c
     model: "SSD1306 128x64"
-    reset_pin: D0
     address: 0x3C
     lambda: |-
-      it.print(0, 0, id(comicsans), "Hello World!");
-      it.print(0, 30, id(roboto), "Hello World!");
+      auto time = id(sntp_time).now();
+      if (time.is_valid()) {
+        it.strftime(0,0, id(roboto), "%X", time);
+      } else {
+        it.print(0,0, id(roboto), "not synced");
+      }
 
 light:
   - platform: neopixelbus
     variant: SK6812
     type: GRBW
-    pin: D1
+    pin: D2
     num_leds: 35
     name: "Notification Light"
+    id: notification_light
     effects:
+      - addressable_lambda:
+          name: "THE notification effect"
+          update_interval: 100ms
+          lambda: |-
+            // -------------------------
+            #define COLOR_WIDTH 3
+            #define COLOR_COUNT 6
+            static float COLOR_SHAPE[COLOR_WIDTH] = {255,255,255};//{64,85,128,255,128,85,64};
+            static uint8_t BETWEEN_COLORS = 3;
+            static uint8_t BETWEEN_CYCLES = 35-COLOR_WIDTH;
+            // --------------------------
+            static uint8_t cycles_until_next_color = 0;
+            static uint8_t cycles_until_color_ends = COLOR_WIDTH;
+            static uint8_t notification_class = 0;
+
+            static Color next_color; // = COLORS[notification_class];
+
+            // shift every pixel over
+            for (int i = it.size()-1; i > 0; i--) {
+              it[i] = it[i-1].get();
+            }
+
+            if (cycles_until_next_color > 0) {
+              // no color is being added
+              it[0] = Color::BLACK;
+              cycles_until_next_color--;
+            } else {
+              ESP_LOGD("notify_effect", "cunc=%d, cuce=%d, nc=%d", cycles_until_next_color, cycles_until_color_ends, notification_class);
+              // there is currently a color being added
+              time_t is_active = id(pending_notifications)[notification_class];
+              if (is_active) {
+                next_color = id(colors)[notification_class];
+              } else {
+                next_color = Color::BLACK;
+              }
+              it[0] = next_color.darken(255-COLOR_SHAPE[cycles_until_color_ends-1]);
+              if (cycles_until_color_ends > 0) {
+                // continue to finish this color
+                cycles_until_color_ends--;
+              } else {
+                ESP_LOGD("notify_effect", "preparing next color");
+                // prepare next color
+                cycles_until_color_ends = COLOR_WIDTH;
+                if (notification_class == COLOR_COUNT-1) {
+                  ESP_LOGD("notify_effect", "nc == COLOR_COUNT-1: resetting cunc");
+                  // we're at notification_class == COLOR_COUNT-1
+                  // reset notification_class and prepare for full cycle
+                  notification_class = 0;
+                  cycles_until_next_color = BETWEEN_CYCLES;
+                } else {
+                  ESP_LOGD("notify_effect", "nc < COLOR_COUNT-1:");
+                  // we're at some notification_class < COLOR_COUNT - 1
+                  // find the next "non-empty" class
+                  notification_class++;
+                  for (; notification_class < COLOR_COUNT; notification_class++) {
+                    is_active = id(pending_notifications)[notification_class];
+                    ESP_LOGD("notify_effect", "nc = %d -> is_active = %d", notification_class, is_active);
+                    if (is_active) {
+                      break;
+                    }
+                  }
+                  if (notification_class < COLOR_COUNT && is_active) {
+                    ESP_LOGD("notify_effect", "found next nc: %d", notification_class);
+                    // there is actually a "non-empty" class
+                    // set its color and prepare small spacing
+                    cycles_until_next_color = BETWEEN_COLORS;
+                  } else {
+                    // we arrived at notification_class == 0 without finding an active class
+                    // reset notification_class and prepare for full cycle
+                    notification_class = COLOR_COUNT;
+                    cycles_until_next_color = BETWEEN_CYCLES;
+                  }
+                }
+              }
+            }
       - pulse:
-          name: Normal Pulse
-      - pulse:
-          name: Short Pulse
-          transition_length: 0.5s
-          update_interval: 5s
-      - pulse:
-          name: Super Short Pulse
-          transition_length: 0.3s
-          update_interval: 5s
-      - addressable_rainbow:
-      - addressable_scan:
-      - addressable_scan:
-          name: Width 2
-          scan_width: 2
-      - addressable_scan:
-          name: Width 3
-          scan_width: 3
-      - addressable_color_wipe:
-          name: Wipe
-          add_led_interval: 30ms
-          colors:
-            - red: 100%
-              green: 0%
-              blue: 0%
-              white: 0%
-              num_leds: 3
-            - red: 0%
-              green: 0%
-              blue: 0%
-              white: 0%
-              num_leds: 8
-            - red: 0%
-              green: 100%
-              blue: 0%
-              white: 0%
-              num_leds: 3
-            - red: 0%
-              green: 0%
-              blue: 0%
-              white: 0%
-              num_leds: 10
-            - red: 0%
-              green: 0%
-              blue: 100%
-              white: 0%
-              num_leds: 3
-            - red: 0%
-              green: 0%
-              blue: 0%
-              white: 0%
-              num_leds: 10
-            - red: 0%
-              green: 0%
-              blue: 0%
-              white: 0%
-              num_leds: 2
