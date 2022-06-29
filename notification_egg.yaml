@@ -61,36 +61,124 @@ interval:
           }
       - component.update: txt_notifications
 
-<<: !include
-  file: common/fragments/notification_light.config.yaml
-  vars:
-    color: red
-    index: 0
-<<: !include
-  file: common/fragments/notification_light.config.yaml
-  vars:
-    color: green
-    index: 1
-<<: !include
-  file: common/fragments/notification_light.config.yaml
-  vars:
-    color: blue
-    index: 2
-<<: !include
-  file: common/fragments/notification_light.config.yaml
-  vars:
-    color: yellow
-    index: 3
-<<: !include
-  file: common/fragments/notification_light.config.yaml
-  vars:
-    color: cyan
-    index: 4
-<<: !include
-  file: common/fragments/notification_light.config.yaml
-  vars:
-    color: magenta
-    index: 5
+mqtt:
+  on_message:
+    - topic: "esphome/$devicename/notify/red"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for RED: %s"
+          args: ["x.c_str()" ]
+
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[0];
+          if (end > old)
+            id(pending_notifications)[0] = end;
+    - topic: "esphome/$devicename/notify/green"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for GREEN: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[1];
+          if (end > old)
+            id(pending_notifications)[1] = end;
+    - topic: "esphome/$devicename/notify/blue"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for BLUE: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[2];
+          if (end > old)
+            id(pending_notifications)[2] = end;
+    - topic: "esphome/$devicename/notify/yellow"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for YELLOW: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[3];
+          if (end > old)
+            id(pending_notifications)[3] = end;
+    - topic: "esphome/$devicename/notify/cyan"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for CYAN: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[4];
+          if (end > old)
+            id(pending_notifications)[4] = end;
+    - topic: "esphome/$devicename/notify/magenta"
+      then:
+      - logger.log:
+          level: INFO
+          format: "Received new timestamp for MAGENTA: %s"
+          args: ["x.c_str()" ]
+      - lambda: |-
+          time_t end = atoll(x.c_str());
+          time_t old = id(pending_notifications)[5];
+          if (end > old)
+            id(pending_notifications)[5] = end;
+button:
+  - platform: template
+    name: "Test RED notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/red"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test GREEN notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/green"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test BLUE notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/blue"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test YELLOW notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/yellow"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test CYAN notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/cyan"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - platform: template
+    name: "Test MAGENTA notification"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/magenta"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
 
 text_sensor:
   - platform: template
