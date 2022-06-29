@@ -59,6 +59,7 @@ interval:
               ESP_LOGI("interval", "reset %u: %lli >= %lli", i, utc, old);
             }
           }
+      - component.update: txt_notifications
 
 <<: !include
   file: common/fragments/notification_light.config.yaml
@@ -129,14 +130,15 @@ light:
     effects:
       - addressable_lambda:
           name: "THE notification effect"
-          update_interval: 100ms
+          update_interval: 16ms
           lambda: |-
             // -------------------------
             #define COLOR_WIDTH 3
             #define COLOR_COUNT 6
-            static float COLOR_SHAPE[COLOR_WIDTH] = {255,255,255};//{64,85,128,255,128,85,64};
-            static uint8_t BETWEEN_COLORS = 3;
-            static uint8_t BETWEEN_CYCLES = 35-COLOR_WIDTH;
+            #define FADE_OUT 5
+            static float COLOR_SHAPE[COLOR_WIDTH] = {64,128,64};//{64,85,128,255,128,85,64};
+            static uint8_t BETWEEN_COLORS = 5;
+            static uint8_t BETWEEN_CYCLES = 3*35;//(35-COLOR_WIDTH);
             // --------------------------
             static uint8_t cycles_until_next_color = 0;
             static uint8_t cycles_until_color_ends = COLOR_WIDTH;
@@ -145,8 +147,12 @@ light:
             static Color next_color; // = COLORS[notification_class];
 
             // shift every pixel over
-            for (int i = it.size()-1; i > 0; i--) {
-              it[i] = it[i-1].get();
+            uint8_t px = it.size()-1;
+            for (; px >= it.size()-FADE_OUT-1; px--) {
+              it[px] = it[px-1].get().darken(255/FADE_OUT);
+            }
+            for (; px > 0; px--) {
+              it[px] = it[px-1].get();
             }
 
             if (cycles_until_next_color > 0) {
