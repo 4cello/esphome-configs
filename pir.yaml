@@ -12,8 +12,6 @@ esphome:
 
 captive_portal:
 
-ota:
-
 binary_sensor:
   - platform: gpio
     pin: D2

@@ -12,8 +12,6 @@ esphome:
 
 captive_portal:
 
-ota:
-
 light:
   - platform: fastled_clockless
     chipset: WS2812B

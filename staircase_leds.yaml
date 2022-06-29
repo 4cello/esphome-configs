@@ -11,8 +11,6 @@ esphome:
 
 captive_portal:
 
-ota:
-
 mqtt:
   on_message:
     topic: esphome/$devicename/single_led

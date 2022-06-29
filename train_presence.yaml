@@ -19,8 +19,6 @@ wifi:
 logger:
   baud_rate: 0
 
-ota:
-
 binary_sensor:
   - platform: gpio
     name: "$devicename Track Section 1"   

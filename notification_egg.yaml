@@ -21,8 +21,6 @@ time:
 
 captive_portal:
 
-ota:
-
 globals:
   - id: colors
     type: Color[6]

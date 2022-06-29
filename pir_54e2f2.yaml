@@ -12,8 +12,6 @@ esphome:
 
 captive_portal:
 
-ota:
-
 remote_receiver:
   pin: D2
   dump:

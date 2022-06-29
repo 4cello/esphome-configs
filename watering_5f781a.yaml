@@ -31,8 +31,6 @@ wifi:
 
 captive_portal:
 
-ota:
-
 mqtt:
   topic_prefix: esphome/$devicename
   on_message:

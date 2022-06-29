@@ -11,8 +11,6 @@ esphome:
 
 captive_portal:
 
-ota:
-
 mqtt:
     broker: !secret mqtt_broker 
     topic_prefix: esphome/$devicename
