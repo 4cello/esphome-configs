@@ -11,8 +11,6 @@ esphome:
 
 captive_portal:
 
-ota:
-
 sensor:
   - platform: rotary_encoder
     name: "Rotary Encoder"

@@ -15,8 +15,6 @@ logger:
   tx_buffer_size: 128
   esp8266_store_log_strings_in_flash: False
 
-ota:
-
 mqtt:
     birth_message:
     will_message:

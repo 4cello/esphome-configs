@@ -5,6 +5,8 @@ esphome:
 logger:
   level: INFO
 
+ota:
+
 mqtt:
   broker: !secret mqtt_broker 
   topic_prefix: esphome/$devicename

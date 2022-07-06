@@ -14,8 +14,6 @@ esphome:
 
 captive_portal:
 
-ota:
-
 deep_sleep:
 #    run_duration: 20s
 #    sleep_duration: 10min

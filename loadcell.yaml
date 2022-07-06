@@ -11,8 +11,6 @@ esphome:
 
 captive_portal:
 
-ota:
-
 sensor:
   - platform: hx711
     name: "HX711 Value"

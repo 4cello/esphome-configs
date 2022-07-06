@@ -11,8 +11,6 @@ packages:
 
 captive_portal:
 
-ota:
-
 mqtt:
     broker: nextpi.fritz.box
     topic_prefix: esphome/$devicename
