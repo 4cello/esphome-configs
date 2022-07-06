@@ -24,8 +24,40 @@ time:
   - platform: sntp
     id: sntp_time
 
+globals:
+  - id: pending_notifications
+    type: time_t[6]
+    initial_value: |-
+      {
+        0,0,0,0,0,0
+      }
+
+#mqtt:
+#  on_message:
+#    - topic: "esphome/$devicename/notify/red"
+#      then:
+#      - logger.log:
+#          level: INFO
+#          format: "Received new timestamp for RED: %s"
+#          args: ["x.c_str()" ]
+#      - lambda: |-
+#          time_t end = atoll(x.c_str());
+#          time_t old = id(pending_notifications)[0];
+#          if (end > old)
+#            id(pending_notifications)[0] = end;
+
+button:
+  - platform: template
+    name: "DUMMY TEMPLATE BUTTON PLS IGNORE"
+    on_press:
+      - mqtt.publish:
+          topic: "esphome/$devicename/notify/red"
+          payload: !lambda |-
+            char buf[32]; 
+            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+
 notification_light:
   colors:
-  - red
-  - green
-  - blue
+  - color: pink
+  - color: green
+  - color: blue
