@@ -1,5 +1,7 @@
 substitutions:
   devicename: notification-egg
+  text_x: "40"
+  text_y: "180"
 
 packages:
   wifi: !include common/wifi.yaml
@@ -39,6 +41,12 @@ globals:
       {
         0,0,0,0,0,0
       }
+  - id: notification_received
+    type: time_t[6]
+    initial_value: |-
+      {
+        0,0,0,0,0,0
+      }
 
 interval:
   - interval: 10s
@@ -54,9 +62,11 @@ interval:
             if (!old) continue;
             if (utc >= old) {
               id(pending_notifications)[i] = 0;
+              id(notification_received)[i] = 0;
               ESP_LOGI("interval", "reset %u: %lli >= %lli", i, utc, old);
             }
           }
+      
       - component.update: txt_notifications
 
 mqtt:
@@ -67,12 +77,14 @@ mqtt:
           level: INFO
           format: "Received new timestamp for RED: %s"
           args: ["x.c_str()" ]
-
       - lambda: |-
+          uint8_t i = 0;
           time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[0];
-          if (end > old)
-            id(pending_notifications)[0] = end;
+          time_t old = id(pending_notifications)[i];
+          if (end > old) {
+            id(pending_notifications)[i] = end;
+            id(notification_received)[i] = id(sntp_time).now().timestamp;
+          }
     - topic: "esphome/$devicename/notify/green"
       then:
       - logger.log:
@@ -80,10 +92,13 @@ mqtt:
           format: "Received new timestamp for GREEN: %s"
           args: ["x.c_str()" ]
       - lambda: |-
+          uint8_t i = 1;
           time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[1];
-          if (end > old)
-            id(pending_notifications)[1] = end;
+          time_t old = id(pending_notifications)[i];
+          if (end > old) {
+            id(pending_notifications)[i] = end;
+            id(notification_received)[i] = id(sntp_time).now().timestamp;
+          }
     - topic: "esphome/$devicename/notify/blue"
       then:
       - logger.log:
@@ -91,10 +106,13 @@ mqtt:
           format: "Received new timestamp for BLUE: %s"
           args: ["x.c_str()" ]
       - lambda: |-
+          uint8_t i = 2;
           time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[2];
-          if (end > old)
-            id(pending_notifications)[2] = end;
+          time_t old = id(pending_notifications)[i];
+          if (end > old) {
+            id(pending_notifications)[i] = end;
+            id(notification_received)[i] = id(sntp_time).now().timestamp;
+          }
     - topic: "esphome/$devicename/notify/yellow"
       then:
       - logger.log:
@@ -102,10 +120,13 @@ mqtt:
           format: "Received new timestamp for YELLOW: %s"
           args: ["x.c_str()" ]
       - lambda: |-
+          uint8_t i = 3;
           time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[3];
-          if (end > old)
-            id(pending_notifications)[3] = end;
+          time_t old = id(pending_notifications)[i];
+          if (end > old) {
+            id(pending_notifications)[i] = end;
+            id(notification_received)[i] = id(sntp_time).now().timestamp;
+          }
     - topic: "esphome/$devicename/notify/cyan"
       then:
       - logger.log:
@@ -113,10 +134,13 @@ mqtt:
           format: "Received new timestamp for CYAN: %s"
           args: ["x.c_str()" ]
       - lambda: |-
+          uint8_t i = 4;
           time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[4];
-          if (end > old)
-            id(pending_notifications)[4] = end;
+          time_t old = id(pending_notifications)[i];
+          if (end > old) {
+            id(pending_notifications)[i] = end;
+            id(notification_received)[i] = id(sntp_time).now().timestamp;
+          }
     - topic: "esphome/$devicename/notify/magenta"
       then:
       - logger.log:
@@ -124,10 +148,14 @@ mqtt:
           format: "Received new timestamp for MAGENTA: %s"
           args: ["x.c_str()" ]
       - lambda: |-
+          uint8_t i = 5;
           time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[5];
-          if (end > old)
-            id(pending_notifications)[5] = end;
+          time_t old = id(pending_notifications)[i];
+          if (end > old) {
+            id(pending_notifications)[i] = end;
+            id(notification_received)[i] = id(sntp_time).now().timestamp;
+          }
+
 button:
   - platform: template
     name: "Test RED notification"
@@ -207,6 +235,12 @@ font:
     id: roboto
     size: 32
 
+image:
+  - file: "resources/notification_light/doorbell.png"
+    id: img_doorbell
+    resize: 160x160
+
+
 i2c:
   sda: D6
   scl: D7
@@ -216,13 +250,24 @@ display:
   - platform: ssd1306_i2c
     model: "SSD1306 128x64"
     address: 0x3C
-    lambda: |-
-      auto time = id(sntp_time).now();
-      if (time.is_valid()) {
-        it.strftime(0,0, id(roboto), "%X", time);
-      } else {
-        it.print(0,0, id(roboto), "not synced");
-      }
+    pages:
+      - id: page_default
+        lambda: |-
+          auto time = id(sntp_time).now();
+          if (time.is_valid()) {
+            it.strftime(${text_x},${text_y}, id(roboto), "%X", time);
+          } else {
+            it.print(${text_x},${text_y}, id(roboto), "not synced");
+          }
+      - id: page_1
+        lambda: |-
+          it.image(40,20, id(img_doorbell), id(colors)[0], Color::BLACK);
+          auto t = id(pending_notifications)[0];
+          if (t > 0) {
+            auto o_time = ESPTime::from_epoch_local(t);
+            it.strftime(${text_x},${text_y}, id(roboto), "%X", o_time);
+          }
+
 
 light:
   - platform: neopixelbus
