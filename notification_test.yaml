@@ -6,9 +6,7 @@ packages:
   device_base: !include common/device_base.yaml
 
 external_components:
-  - source:
-      type: local
-      path: components
+  - source: components
 
 esphome:
   platform: ESP8266
@@ -46,15 +44,15 @@ globals:
 #          if (end > old)
 #            id(pending_notifications)[0] = end;
 
-button:
-  - platform: template
-    name: "DUMMY TEMPLATE BUTTON PLS IGNORE"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/red"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+#button:
+#  - platform: template
+#    name: "DUMMY TEMPLATE BUTTON PLS IGNORE"
+#    on_press:
+#      - mqtt.publish:
+#          topic: "esphome/$devicename/notify/red"
+#          payload: !lambda |-
+#            char buf[32]; 
+#            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
 
 notification_light:
   colors:
