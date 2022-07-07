@@ -1,13 +1,15 @@
 substitutions:
   devicename: notification-egg
   num_colors: "6"
-  debug_duration: "60"
 
   # Display parameters
   text_x: "40"
   text_y: "180"
   image_x: "40"
   image_y: "20"
+
+  # Button Parameter
+  debug_duration: "60"
 
 packages:
   wifi: !include fragments/common/wifi.yaml
@@ -40,6 +42,7 @@ globals:
         Color(255,255,0,0), // yellow
         Color(0,255,255,0), // cyan
         Color(255,0,255,0) // magenta
+        // don't forget to change the num_colors substitution!!!
       }
   - id: pending_notifications
     type: time_t[${num_colors}]
@@ -57,23 +60,75 @@ globals:
 interval:
   - interval: 10s
     then:
-      - lambda: |-
+      - script.execute: clean_overdue_notifications
+      - script.execute: next_page
+      - component.update: txt_notifications
+
+script:
+  - id: clean_overdue_notifications
+    mode: queued
+    then:
+      lambda: |-
+        uint8_t len = sizeof(id(colors)) / sizeof(Color*);
+        auto now = id(sntp_time).now();
+        if (!now.is_valid()) 
+          return;
+        time_t utc = now.timestamp;
+        for (uint8_t i = 0; i < len; i++) {
+          time_t old = id(pending_notifications)[i];
+          if (!old) continue;
+          if (utc >= old) {
+            id(pending_notifications)[i] = 0;
+            id(notification_received)[i] = 0;
+            ESP_LOGI("interval", "reset %u: %lli >= %lli", i, utc, old);
+          }
+        }
+  - id: next_page
+    mode: queued
+    then:
+      repeat:
+        count: !lambda |-
           uint8_t len = sizeof(id(colors)) / sizeof(Color*);
-          auto now = id(sntp_time).now();
-          if (!now.is_valid()) 
-            return;
-          time_t utc = now.timestamp;
-          for (uint8_t i = 0; i < len; i++) {
-            time_t old = id(pending_notifications)[i];
-            if (!old) continue;
-            if (utc >= old) {
-              id(pending_notifications)[i] = 0;
-              id(notification_received)[i] = 0;
-              ESP_LOGI("interval", "reset %u: %lli >= %lli", i, utc, old);
+          static uint8_t current_page = len; // default = len
+          
+          time_t current_timestamp = 0;
+          if (current_page < len) {
+            current_timestamp = id(pending_notifications)[current_page];
+          }
+          time_t next_timestamp = 0;
+          uint8_t next_page = current_page;
+          // iterate over all notification classes
+          // starting after the current one
+          for (uint8_t i = 1; i < len; i++) {
+            next_page = (current_page + i) % len;
+            next_timestamp = id(pending_notifications)[next_page];
+            // if the page has a timestamp:
+              // calculate scrolls and return
+            if (next_timestamp > 0) {
+              current_timestamp = next_timestamp;
+              // scroll at least i times
+              uint8_t scrolls = i;
+              if (next_page < current_page) {
+                // bonus scroll to skip default page
+                scrolls++;
+              }
+              current_page = next_page;
+              return scrolls;
             }
           }
-      
-      - component.update: txt_notifications
+          // no other notification class has been found
+          // check if current class is inactive
+          if (current_timestamp == 0) {
+            // if no class is active, show default page
+            uint8_t scrolls = len - current_page;
+            current_page = len;
+            return scrolls;
+          }
+          // if current class is still active, do nothing
+          return 0;
+        then:
+          - display.page.show_next: notification_display
+          - component.update: notification_display
 
 mqtt:
   on_message:
@@ -109,6 +164,10 @@ mqtt:
           color: magenta
 
 button:
+  - platform: template
+    name: "Cycle display page"
+    on_press:
+      - script.execute: next_page
   - <<: !include
       file: fragments/notification_light/button.config.yaml
       vars:
@@ -176,6 +235,7 @@ i2c:
 
 display:
   - platform: ssd1306_i2c
+    id: notification_display
     model: "SSD1306 128x64"
     address: 0x3C
     pages:
