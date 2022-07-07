@@ -1,9 +1,19 @@
 substitutions:
   devicename: notification-egg
+  num_colors: "6"
+
+  # Display parameters
+  text_x: "40"
+  text_y: "180"
+  image_x: "40"
+  image_y: "20"
+
+  # Button Parameter
+  debug_duration: "60"
 
 packages:
-  wifi: !include common/wifi.yaml
-  device_base: !include common/device_base.yaml
+  wifi: !include fragments/common/wifi.yaml
+  device_base: !include fragments/common/device_base.yaml
 
 esphome:
   platform: ESP8266
@@ -23,7 +33,7 @@ captive_portal:
 
 globals:
   - id: colors
-    type: Color[6]
+    type: Color[${num_colors}]
     initial_value: |-
       {
         Color(255,0,0,0), // red
@@ -32,9 +42,16 @@ globals:
         Color(255,255,0,0), // yellow
         Color(0,255,255,0), // cyan
         Color(255,0,255,0) // magenta
+        // don't forget to change the num_colors substitution!!!
       }
   - id: pending_notifications
-    type: time_t[6]
+    type: time_t[${num_colors}]
+    initial_value: |-
+      {
+        0,0,0,0,0,0
+      }
+  - id: notification_received
+    type: time_t[${num_colors}]
     initial_value: |-
       {
         0,0,0,0,0,0
@@ -43,140 +60,138 @@ globals:
 interval:
   - interval: 10s
     then:
-      - lambda: |-
+      - script.execute: clean_overdue_notifications
+      - script.execute: next_page
+      - component.update: txt_notifications
+
+script:
+  - id: clean_overdue_notifications
+    mode: queued
+    then:
+      lambda: |-
+        uint8_t len = sizeof(id(colors)) / sizeof(Color*);
+        auto now = id(sntp_time).now();
+        if (!now.is_valid()) 
+          return;
+        time_t utc = now.timestamp;
+        for (uint8_t i = 0; i < len; i++) {
+          time_t old = id(pending_notifications)[i];
+          if (!old) continue;
+          if (utc >= old) {
+            id(pending_notifications)[i] = 0;
+            id(notification_received)[i] = 0;
+            ESP_LOGI("interval", "reset %u: %lli >= %lli", i, utc, old);
+          }
+        }
+  - id: next_page
+    mode: queued
+    then:
+      repeat:
+        count: !lambda |-
           uint8_t len = sizeof(id(colors)) / sizeof(Color*);
-          auto now = id(sntp_time).now();
-          if (!now.is_valid()) 
-            return;
-          time_t utc = now.timestamp;
-          for (uint8_t i = 0; i < len; i++) {
-            time_t old = id(pending_notifications)[i];
-            if (!old) continue;
-            if (utc >= old) {
-              id(pending_notifications)[i] = 0;
-              ESP_LOGI("interval", "reset %u: %lli >= %lli", i, utc, old);
+          static uint8_t current_page = len; // default = len
+          
+          time_t current_timestamp = 0;
+          if (current_page < len) {
+            current_timestamp = id(pending_notifications)[current_page];
+          }
+          time_t next_timestamp = 0;
+          uint8_t next_page = current_page;
+          // iterate over all notification classes
+          // starting after the current one
+          for (uint8_t i = 1; i < len; i++) {
+            next_page = (current_page + i) % len;
+            next_timestamp = id(pending_notifications)[next_page];
+            // if the page has a timestamp:
+              // calculate scrolls and return
+            if (next_timestamp > 0) {
+              current_timestamp = next_timestamp;
+              // scroll at least i times
+              uint8_t scrolls = i;
+              if (next_page < current_page) {
+                // bonus scroll to skip default page
+                scrolls++;
+              }
+              current_page = next_page;
+              return scrolls;
             }
           }
-      - component.update: txt_notifications
+          // no other notification class has been found
+          // check if current class is inactive
+          if (current_timestamp == 0) {
+            // if no class is active, show default page
+            uint8_t scrolls = len - current_page;
+            current_page = len;
+            return scrolls;
+          }
+          // if current class is still active, do nothing
+          return 0;
+        then:
+          - display.page.show_next: notification_display
+          - component.update: notification_display
 
 mqtt:
   on_message:
-    - topic: "esphome/$devicename/notify/red"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for RED: %s"
-          args: ["x.c_str()" ]
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 0
+          color: red
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 1
+          color: green
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 2
+          color: blue
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 3
+          color: yellow
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 4
+          color: cyan
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 5
+          color: magenta
 
-      - lambda: |-
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[0];
-          if (end > old)
-            id(pending_notifications)[0] = end;
-    - topic: "esphome/$devicename/notify/green"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for GREEN: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[1];
-          if (end > old)
-            id(pending_notifications)[1] = end;
-    - topic: "esphome/$devicename/notify/blue"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for BLUE: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[2];
-          if (end > old)
-            id(pending_notifications)[2] = end;
-    - topic: "esphome/$devicename/notify/yellow"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for YELLOW: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[3];
-          if (end > old)
-            id(pending_notifications)[3] = end;
-    - topic: "esphome/$devicename/notify/cyan"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for CYAN: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[4];
-          if (end > old)
-            id(pending_notifications)[4] = end;
-    - topic: "esphome/$devicename/notify/magenta"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for MAGENTA: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[5];
-          if (end > old)
-            id(pending_notifications)[5] = end;
 button:
   - platform: template
-    name: "Test RED notification"
+    name: "Cycle display page"
     on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/red"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test GREEN notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/green"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test BLUE notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/blue"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test YELLOW notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/yellow"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test CYAN notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/cyan"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test MAGENTA notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/magenta"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+      - script.execute: next_page
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: red
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: green
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: blue
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: yellow
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: cyan
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: magenta
 
 text_sensor:
   - platform: template
@@ -207,6 +222,12 @@ font:
     id: roboto
     size: 32
 
+image:
+  - file: "resources/notification_light/doorbell.png"
+    id: img_doorbell
+    resize: 160x160
+
+
 i2c:
   sda: D6
   scl: D7
@@ -214,15 +235,49 @@ i2c:
 
 display:
   - platform: ssd1306_i2c
+    id: notification_display
     model: "SSD1306 128x64"
     address: 0x3C
-    lambda: |-
-      auto time = id(sntp_time).now();
-      if (time.is_valid()) {
-        it.strftime(0,0, id(roboto), "%X", time);
-      } else {
-        it.print(0,0, id(roboto), "not synced");
-      }
+    pages:
+      - id: page_default
+        lambda: |-
+          auto time = id(sntp_time).now();
+          if (time.is_valid()) {
+            it.strftime(${text_x},${text_y}, id(roboto), "%X", time);
+          } else {
+            it.print(${text_x},${text_y}, id(roboto), "not synced");
+          }
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 0
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 1
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 2
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 3
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 4
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 5
+            image: img_doorbell
+
 
 light:
   - platform: neopixelbus

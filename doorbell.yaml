@@ -2,8 +2,8 @@ substitutions:
     devicename: doorbell
 
 packages:
-  wifi: !include common/wifi.yaml
-  device_base: !include common/device_base.yaml
+  wifi: !include fragments/common/wifi.yaml
+  device_base: !include fragments/common/device_base.yaml
 
 esphome:
   platform: ESP8266
