@@ -1,11 +1,17 @@
 substitutions:
   devicename: notification-egg
+  num_colors: "6"
+  debug_duration: "60"
+
+  # Display parameters
   text_x: "40"
   text_y: "180"
+  image_x: "40"
+  image_y: "20"
 
 packages:
-  wifi: !include common/wifi.yaml
-  device_base: !include common/device_base.yaml
+  wifi: !include fragments/common/wifi.yaml
+  device_base: !include fragments/common/device_base.yaml
 
 esphome:
   platform: ESP8266
@@ -25,7 +31,7 @@ captive_portal:
 
 globals:
   - id: colors
-    type: Color[6]
+    type: Color[${num_colors}]
     initial_value: |-
       {
         Color(255,0,0,0), // red
@@ -36,13 +42,13 @@ globals:
         Color(255,0,255,0) // magenta
       }
   - id: pending_notifications
-    type: time_t[6]
+    type: time_t[${num_colors}]
     initial_value: |-
       {
         0,0,0,0,0,0
       }
   - id: notification_received
-    type: time_t[6]
+    type: time_t[${num_colors}]
     initial_value: |-
       {
         0,0,0,0,0,0
@@ -71,140 +77,62 @@ interval:
 
 mqtt:
   on_message:
-    - topic: "esphome/$devicename/notify/red"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for RED: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          uint8_t i = 0;
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[i];
-          if (end > old) {
-            id(pending_notifications)[i] = end;
-            id(notification_received)[i] = id(sntp_time).now().timestamp;
-          }
-    - topic: "esphome/$devicename/notify/green"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for GREEN: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          uint8_t i = 1;
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[i];
-          if (end > old) {
-            id(pending_notifications)[i] = end;
-            id(notification_received)[i] = id(sntp_time).now().timestamp;
-          }
-    - topic: "esphome/$devicename/notify/blue"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for BLUE: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          uint8_t i = 2;
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[i];
-          if (end > old) {
-            id(pending_notifications)[i] = end;
-            id(notification_received)[i] = id(sntp_time).now().timestamp;
-          }
-    - topic: "esphome/$devicename/notify/yellow"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for YELLOW: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          uint8_t i = 3;
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[i];
-          if (end > old) {
-            id(pending_notifications)[i] = end;
-            id(notification_received)[i] = id(sntp_time).now().timestamp;
-          }
-    - topic: "esphome/$devicename/notify/cyan"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for CYAN: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          uint8_t i = 4;
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[i];
-          if (end > old) {
-            id(pending_notifications)[i] = end;
-            id(notification_received)[i] = id(sntp_time).now().timestamp;
-          }
-    - topic: "esphome/$devicename/notify/magenta"
-      then:
-      - logger.log:
-          level: INFO
-          format: "Received new timestamp for MAGENTA: %s"
-          args: ["x.c_str()" ]
-      - lambda: |-
-          uint8_t i = 5;
-          time_t end = atoll(x.c_str());
-          time_t old = id(pending_notifications)[i];
-          if (end > old) {
-            id(pending_notifications)[i] = end;
-            id(notification_received)[i] = id(sntp_time).now().timestamp;
-          }
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 0
+          color: red
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 1
+          color: green
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 2
+          color: blue
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 3
+          color: yellow
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 4
+          color: cyan
+    - <<: !include
+        file: fragments/notification_light/mqttsub.config.yaml
+        vars:
+          index: 5
+          color: magenta
 
 button:
-  - platform: template
-    name: "Test RED notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/red"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test GREEN notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/green"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test BLUE notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/blue"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test YELLOW notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/yellow"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test CYAN notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/cyan"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
-  - platform: template
-    name: "Test MAGENTA notification"
-    on_press:
-      - mqtt.publish:
-          topic: "esphome/$devicename/notify/magenta"
-          payload: !lambda |-
-            char buf[32]; 
-            return itoa(id(sntp_time).now().timestamp + 30, buf, 10);
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: red
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: green
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: blue
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: yellow
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: cyan
+  - <<: !include
+      file: fragments/notification_light/button.config.yaml
+      vars:
+        color: magenta
 
 text_sensor:
   - platform: template
@@ -259,14 +187,36 @@ display:
           } else {
             it.print(${text_x},${text_y}, id(roboto), "not synced");
           }
-      - id: page_1
-        lambda: |-
-          it.image(40,20, id(img_doorbell), id(colors)[0], Color::BLACK);
-          auto t = id(pending_notifications)[0];
-          if (t > 0) {
-            auto o_time = ESPTime::from_epoch_local(t);
-            it.strftime(${text_x},${text_y}, id(roboto), "%X", o_time);
-          }
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 0
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 1
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 2
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 3
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 4
+            image: img_doorbell
+      - <<: !include
+          file: fragments/notification_light/display_page.config.yaml
+          vars:
+            page_index: 5
+            image: img_doorbell
 
 
 light:

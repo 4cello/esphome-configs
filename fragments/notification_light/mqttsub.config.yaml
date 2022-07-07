@@ -1,0 +1,13 @@
+topic: "esphome/$devicename/notify/${color}"
+then:
+- logger.log:
+    level: INFO
+    format: "Received new timestamp for ${color}: %s"
+    args: ["x.c_str()" ]
+- lambda: |-
+    time_t end = atoll(x.c_str());
+    time_t old = id(pending_notifications)[${index}];
+    if (end > old) {
+        id(pending_notifications)[${index}] = end;
+        id(notification_received)[${index}] = id(sntp_time).now().timestamp;
+    }
