@@ -1,0 +1,60 @@
+substitutions:
+    devicename: hunger-button
+
+packages:
+  wifi: !include common/wifi.yaml
+  device_base: !include common/device_base.yaml
+
+esphome:
+  platform: ESP8266
+  board: d1_mini
+  name_add_mac_suffix: True
+  libraries:
+    - ESPNowW
+  includes:
+    - build/$devicename/.piolibdeps/$devicename/ESPNowW/src/ESPNowW.h
+
+captive_portal:
+
+remote_receiver:
+  pin:
+    number: D1
+    inverted: True
+
+logger:
+  level: DEBUG
+
+remote_transmitter:
+  pin: D5
+  carrier_duty_percent: 100%
+
+binary_sensor:
+  - platform: gpio
+    pin: D2
+    name: Hunger Button
+    device_class: safety
+  - platform: remote_receiver
+    name: Hunger Receiver
+    rc_switch_raw: 
+      code: "100010000000000010111110"
+      protocol: 2
+
+button:
+  - platform: template
+    name: Software Hunger Button
+    on_press:
+      - remote_transmitter.transmit_rc_switch_raw:
+          code: "100010000000000010111110"
+          protocol: 2
+
+custom_component:
+  - lambda: |-
+      uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+      ESPNow.init();
+      ESPNow.add_peer(broadcastAddress);
+
+      ESPNow.reg_recv_cb([](uint8_t *mac_addr, uint8_t *data, int data_len) -> esp_now_recv_cb_t {
+        ESP_LOGI("espnow", "Received message");
+        return 0;
+      });
+      return {};

@@ -11,3 +11,4 @@ then:
         id(pending_notifications)[${index}] = end;
         id(notification_received)[${index}] = id(sntp_time).now().timestamp;
     }
+- script.execute: scroll_next_page

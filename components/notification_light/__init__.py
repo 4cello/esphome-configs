@@ -21,6 +21,7 @@ AUTO_LOAD = [ "button", "template" ]
 
 CONF_COLORS = "colors"
 CONF_COLOR_NAME = "color"
+CONF_DEBUG_BUTTON_ID = "debug_button_id"
 CONF_BUTTON_TRIGGER_ID = "button_trigger_id"
 CONF_MQTT_TRIGGER_ID = "mqtt_trigger_id"
 
@@ -29,7 +30,7 @@ CONF_GLOBAL_PENDING_ID = "global_pending_id"
 
 notification_light_ns = cg.esphome_ns.namespace("notification_light")
 NotificationLight = notification_light_ns.class_("NotificationLight", cg.EntityBase)
-
+NotificationDebugButton = notification_light_ns.class_("NotificationDebugButton", cg.EntityBase)
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(NotificationLight),
@@ -39,12 +40,16 @@ CONFIG_SCHEMA = cv.Schema({
         cv.ensure_list(
             cv.Schema({
                 cv.GenerateID(CONF_MQTT_TRIGGER_ID): cv.declare_id(MQTTMessageTrigger),
+                cv.GenerateID(CONF_DEBUG_BUTTON_ID): cv.declare_id(NotificationDebugButton),
                 cv.GenerateID(CONF_BUTTON_TRIGGER_ID): cv.declare_id(ButtonPressTrigger),
                 cv.Required(CONF_COLOR_NAME): cv.string_strict
             })
         ), cv.Length(min=1)
     )
 })
+
+def validate(config):
+    raise cv.Invalid("Meep moop")
 
 async def generate_global(id, type_str, initial_value):
     type_ = cg.RawExpression(type_str)
@@ -77,21 +82,22 @@ async def generate_globals(config, colors):
 
 
 
-async def generate_button(color_name, trigger_id):
+async def generate_button(button_id, color_name, trigger_id):
     mqttid = ID("mqtt_mqttclientcomponent", False, MockObjClass(base="mqtt::MQTTClientComponent", parents=[
         MockObjClass(base="Component", parents=[])
     ]))
 
-    id = f"template__templatebutton_{color_name}"
+    #id = f"template__templatebutton_{color_name}"
     publish_id = ID(f"mqtt_mqttpublishaction_{color_name}", True, MockObjClass(
         base="mqtt::MQTTPublishAction", parents=[MockObjClass(base="Action", parents=[])]
     ), False)
+    #button_id = ID(id, True, MockObjClass(base="template_::TemplateButton", parents=[
+    #        MockObjClass(base="button::Button", parents=[MockObjClass(base="EntityBase", parents=[])]),
+    #        MockObjClass(base="EntityBase", parents=[])
+    #    ]), False)
     conf = {
         "platform": "template",
-        "id": ID(id, True, MockObjClass(base="template_::TemplateButton", parents=[
-            MockObjClass(base="button::Button", parents=[MockObjClass(base="EntityBase", parents=[])]),
-            MockObjClass(base="EntityBase", parents=[])
-        ]), False),
+        "id": button_id,
         "name": f"Test {color_name.upper()} notification",
         "disabled_by_default": False,
         "on_press": [{
@@ -152,14 +158,15 @@ async def subscribe_mqtt(color_name, trigger_id):
     return None
 
 async def to_code(config):
-    cg.add_global(template_ns.using)
+    #cg.add_global(template_ns.using)
     #cg.add_define("USE_TEMPLATE")
 
-    ctempl = CORE.config["template"]
-    if isinstance(ctempl, dict): 
-        ctempl[CONF_PLATFORM]= "button"
-    elif isinstance(ctempl, list):
-        ctempl.append[{CONF_PLATFORM: "button"}]
+#    ctempl = CORE.config["template"]
+#    if isinstance(ctempl, dict): 
+#        ctempl[CONF_PLATFORM]= "button"
+#    elif isinstance(ctempl, list):
+#        CORE.config["template"] = [{CONF_PLATFORM: "button"}]
+#        #ctempl.append[{CONF_PLATFORM: "button"}]
 
     cg.add_global(button_ns.using)
     cg.add_define("USE_BUTTON")
@@ -168,5 +175,5 @@ async def to_code(config):
     await generate_globals(config, rgb_colors)
     for c in config[CONF_COLORS]:
         color_name = c[CONF_COLOR_NAME].lower()
-        await generate_button(color_name, c[CONF_BUTTON_TRIGGER_ID])
+        await generate_button(c[CONF_DEBUG_BUTTON_ID], color_name, c[CONF_BUTTON_TRIGGER_ID])
         await subscribe_mqtt(color_name, c[CONF_MQTT_TRIGGER_ID])

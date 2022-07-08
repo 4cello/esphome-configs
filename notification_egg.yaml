@@ -5,7 +5,7 @@ substitutions:
   # Display parameters
   text_x: "40"
   text_y: "180"
-  image_x: "40"
+  image_x: "45"
   image_y: "20"
 
   # Button Parameter
@@ -15,12 +15,17 @@ packages:
   wifi: !include fragments/common/wifi.yaml
   device_base: !include fragments/common/device_base.yaml
 
+external_components:
+  - source: github://pr#3625
+    components: [ gc9a01 ]
+
 esphome:
-  platform: ESP8266
-  board: d1_mini
+  platform: ESP32
+  board: nodemcu-32s
   on_boot:
     priority: -200
     then:
+      - display.page.show: page_default
       - light.turn_on:
           id: notification_light
           effect: "THE notification effect"
@@ -32,6 +37,12 @@ time:
 captive_portal:
 
 globals:
+  - id: page_current
+    type: uint8_t
+    initial_value: "${num_colors}"
+  - id: page_next
+    type: uint8_t
+    initial_value: ${num_colors}
   - id: colors
     type: Color[${num_colors}]
     initial_value: |-
@@ -61,12 +72,12 @@ interval:
   - interval: 10s
     then:
       - script.execute: clean_overdue_notifications
-      - script.execute: next_page
+      - script.execute: scroll_next_page
       - component.update: txt_notifications
 
 script:
   - id: clean_overdue_notifications
-    mode: queued
+    mode: single
     then:
       lambda: |-
         uint8_t len = sizeof(id(colors)) / sizeof(Color*);
@@ -80,55 +91,63 @@ script:
           if (utc >= old) {
             id(pending_notifications)[i] = 0;
             id(notification_received)[i] = 0;
-            ESP_LOGI("interval", "reset %u: %lli >= %lli", i, utc, old);
+            ESP_LOGI("interval", "reset %u: %li >= %li", i, utc, old);
           }
         }
-  - id: next_page
-    mode: queued
+  - id: scroll_next_page
+    mode: single
     then:
-      repeat:
-        count: !lambda |-
-          uint8_t len = sizeof(id(colors)) / sizeof(Color*);
-          static uint8_t current_page = len; // default = len
-          
-          time_t current_timestamp = 0;
-          if (current_page < len) {
-            current_timestamp = id(pending_notifications)[current_page];
-          }
-          time_t next_timestamp = 0;
-          uint8_t next_page = current_page;
-          // iterate over all notification classes
-          // starting after the current one
-          for (uint8_t i = 1; i < len; i++) {
-            next_page = (current_page + i) % len;
-            next_timestamp = id(pending_notifications)[next_page];
-            // if the page has a timestamp:
-              // calculate scrolls and return
-            if (next_timestamp > 0) {
-              current_timestamp = next_timestamp;
-              // scroll at least i times
-              uint8_t scrolls = i;
-              if (next_page < current_page) {
-                // bonus scroll to skip default page
-                scrolls++;
-              }
-              current_page = next_page;
-              return scrolls;
+      - globals.set:
+          id: page_next
+          value: !lambda |-
+            uint8_t len = sizeof(id(colors)) / sizeof(Color*);
+            uint8_t current_page = id(page_current);
+            time_t current_timestamp = 0;
+            if (current_page < len) {
+              current_timestamp = id(pending_notifications)[current_page];
             }
-          }
-          // no other notification class has been found
-          // check if current class is inactive
-          if (current_timestamp == 0) {
-            // if no class is active, show default page
-            uint8_t scrolls = len - current_page;
-            current_page = len;
-            return scrolls;
-          }
-          // if current class is still active, do nothing
-          return 0;
-        then:
-          - display.page.show_next: notification_display
-          - component.update: notification_display
+            time_t next_timestamp = 0;
+            uint8_t next_page = current_page;
+            // iterate over all notification classes
+            // starting after the current one
+            for (uint8_t i = 1; i < len; i++) {
+              next_page = (current_page + i) % len;
+              next_timestamp = id(pending_notifications)[next_page];
+              // if the page has a timestamp:
+                // return page
+              if (next_timestamp > 0) {
+                return next_page;
+              }
+            }
+            // no other notification class has been found
+            // check if current class is inactive
+            if (current_timestamp == 0) {
+              // if no class is active, show default page
+              return len;
+            } else {
+              // if current class is still active, do nothing
+              return current_page;
+            }
+            return current_page;
+      - repeat:
+          count: !lambda |-
+            uint8_t len = sizeof(id(colors)) / sizeof(Color*);
+            uint8_t current = id(page_current);
+            uint8_t next = id(page_next);
+            if (next > current) {
+              return next-current;
+            } else if (next == current) {
+              return len + 1;
+            } else {
+              return len - current + next + 1; 
+            }
+          then:
+            - display.page.show_next: notification_display
+      - globals.set:
+          id: page_current
+          value: !lambda return id(page_next);
+      - component.update: notification_display
+
 
 mqtt:
   on_message:
@@ -167,7 +186,7 @@ button:
   - platform: template
     name: "Cycle display page"
     on_press:
-      - script.execute: next_page
+      - script.execute: scroll_next_page
   - <<: !include
       file: fragments/notification_light/button.config.yaml
       vars:
@@ -206,7 +225,7 @@ text_sensor:
       char buf[50];
       std::string result = "{";
       for (uint8_t i = 0; i < len; i++) {
-        sprintf(buf, "\"%s\": %lli%s",
+        sprintf(buf, "\"%s\": %li%s",
           color_names[i].c_str(), id(pending_notifications)[i], (i == len - 1) ? "" : ",");
         result += std::string(buf);
       }
@@ -223,27 +242,54 @@ font:
     size: 32
 
 image:
+  - file: "resources/notification_light/smiley.png"
+    id: img_smiley
+    resize: 160x160
+    type: TRANSPARENT_BINARY
   - file: "resources/notification_light/doorbell.png"
     id: img_doorbell
     resize: 160x160
+    type: TRANSPARENT_BINARY
+  - file: "resources/notification_light/washing_machine.png"
+    id: img_washing_machine
+    resize: 160x160
+    type: TRANSPARENT_BINARY
+  - file: "resources/notification_light/dishwasher.png"
+    id: img_dishwasher
+    resize: 160x160
+    type: TRANSPARENT_BINARY
+  - file: "resources/notification_light/lightbulb.png"
+    id: img_lightbulb
+    resize: 160x160
+    type: TRANSPARENT_BINARY
+  - file: "resources/notification_light/open_window.png"
+    id: img_window
+    resize: 160x160
+    type: TRANSPARENT_BINARY
+  - file: "resources/notification_light/phone.png"
+    id: img_phone
+    resize: 160x160
+    type: TRANSPARENT_BINARY
 
-
-i2c:
-  sda: D6
-  scl: D7
-  frequency: 400kHz
+spi:
+  mosi_pin: GPIO23
+  clk_pin: GPIO18
 
 display:
-  - platform: ssd1306_i2c
+  - platform: gc9a01
     id: notification_display
-    model: "SSD1306 128x64"
-    address: 0x3C
+    reset_pin: GPIO26
+    cs_pin: GPIO5
+    dc_pin: GPIO19
+    rotation: 270
+    update_interval: 1h
     pages:
       - id: page_default
         lambda: |-
+          it.image(${image_x},${image_y}, id(img_smiley), Color::WHITE, Color::BLACK);
           auto time = id(sntp_time).now();
           if (time.is_valid()) {
-            it.strftime(${text_x},${text_y}, id(roboto), "%X", time);
+            it.strftime(${text_x}+40,${text_y}, id(roboto), "%H:%M", time);
           } else {
             it.print(${text_x},${text_y}, id(roboto), "not synced");
           }
@@ -256,34 +302,40 @@ display:
           file: fragments/notification_light/display_page.config.yaml
           vars:
             page_index: 1
-            image: img_doorbell
+            image: img_washing_machine
       - <<: !include
           file: fragments/notification_light/display_page.config.yaml
           vars:
             page_index: 2
-            image: img_doorbell
+            image: img_dishwasher
       - <<: !include
           file: fragments/notification_light/display_page.config.yaml
           vars:
             page_index: 3
-            image: img_doorbell
+            image: img_window
       - <<: !include
           file: fragments/notification_light/display_page.config.yaml
           vars:
             page_index: 4
-            image: img_doorbell
+            image: img_lightbulb
       - <<: !include
           file: fragments/notification_light/display_page.config.yaml
           vars:
             page_index: 5
-            image: img_doorbell
+            image: img_phone
 
+switch:
+  - platform: gpio
+    pin: GPIO16
+    name: "Display on/off"
+    id: display_switch
+    restore_mode: ALWAYS_ON
 
 light:
   - platform: neopixelbus
     variant: SK6812
     type: GRBW
-    pin: D2
+    pin: GPIO32
     num_leds: 35
     name: "Notification Light"
     id: notification_light
@@ -370,7 +422,7 @@ light:
                   notification_class++;
                   for (; notification_class < COLOR_COUNT; notification_class++) {
                     is_active = id(pending_notifications)[notification_class];
-                    ESP_LOGD("notify_effect", "nc = %d -> is_active = %d", notification_class, is_active);
+                    ESP_LOGD("notify_effect", "nc = %d -> is_active = %li", notification_class, is_active);
                     if (is_active) {
                       break;
                     }

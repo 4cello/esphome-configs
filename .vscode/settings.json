@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "*.yaml": "esphome"
+        "*.yaml": "esphome",
+        "*.cpp": "cpp",
+        "*.h": "cpp"
     }
 }
