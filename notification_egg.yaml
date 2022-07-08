@@ -103,19 +103,23 @@ script:
             uint8_t len = sizeof(id(colors)) / sizeof(Color*);
             uint8_t current_page = id(page_current);
             time_t current_timestamp = 0;
+            uint8_t start_offset = 0;
             if (current_page < len) {
               current_timestamp = id(pending_notifications)[current_page];
+              start_offset++; // if we are at default page, adding 0 to the index gets us to the next page
             }
             time_t next_timestamp = 0;
             uint8_t next_page = current_page;
             // iterate over all notification classes
             // starting after the current one
-            for (uint8_t i = 1; i < len; i++) {
+            ESP_LOGD("scrollnextpage", "current=%d, start_offset=%d", current_page, start_offset);
+            for (uint8_t i = start_offset; i < len; i++) {
               next_page = (current_page + i) % len;
               next_timestamp = id(pending_notifications)[next_page];
               // if the page has a timestamp:
                 // return page
               if (next_timestamp > 0) {
+                ESP_LOGD("scrollnextpage", "next_page=%d has a timestamp", next_page);
                 return next_page;
               }
             }
@@ -123,24 +127,34 @@ script:
             // check if current class is inactive
             if (current_timestamp == 0) {
               // if no class is active, show default page
+              ESP_LOGD("scrollnextpage", "no active class, go to default");
               return len;
             } else {
               // if current class is still active, do nothing
+              ESP_LOGD("scrollnextpage", "current_page=%d is the only active one", current_page);
               return current_page;
             }
+            ESP_LOGD("scrollnextpage", "reached the end, stay at current_page=%d", current_page);
             return current_page;
+      - logger.log:
+          level: DEBUG
+          tag: "scrollnextpage"
+          format: "current_page=%d, next_page=%d"
+          args: [ "id(page_current)", "id(page_next)" ]
+      - display.page.show: page_default
       - repeat:
-          count: !lambda |-
-            uint8_t len = sizeof(id(colors)) / sizeof(Color*);
-            uint8_t current = id(page_current);
-            uint8_t next = id(page_next);
-            if (next > current) {
-              return next-current;
-            } else if (next == current) {
-              return len + 1;
-            } else {
-              return len - current + next + 1; 
-            }
+          count: !lambda "return id(page_next)+1;"
+              #          count: !lambda |-
+              #            uint8_t len = sizeof(id(colors)) / sizeof(Color*);
+              #            uint8_t current = id(page_current);
+              #            uint8_t next = id(page_next);
+              #            if (next > current) {
+              #              return next-current;
+              #            } else if (next == current) {
+              #              return len + 1;
+              #            } else {
+              #              return len - current + next + 1; 
+              #            }
           then:
             - display.page.show_next: notification_display
       - globals.set:
