@@ -28,7 +28,7 @@ esphome:
       - display.page.show: page_default
       - light.turn_on:
           id: notification_light
-          effect: "THE notification effect"
+          effect: "Notification Effect"
 
 time:
   - platform: sntp
@@ -112,14 +112,12 @@ script:
             uint8_t next_page = current_page;
             // iterate over all notification classes
             // starting after the current one
-            ESP_LOGD("scrollnextpage", "current=%d, start_offset=%d", current_page, start_offset);
             for (uint8_t i = start_offset; i < len; i++) {
               next_page = (current_page + i) % len;
               next_timestamp = id(pending_notifications)[next_page];
               // if the page has a timestamp:
                 // return page
               if (next_timestamp > 0) {
-                ESP_LOGD("scrollnextpage", "next_page=%d has a timestamp", next_page);
                 return next_page;
               }
             }
@@ -127,14 +125,11 @@ script:
             // check if current class is inactive
             if (current_timestamp == 0) {
               // if no class is active, show default page
-              ESP_LOGD("scrollnextpage", "no active class, go to default");
               return len;
             } else {
               // if current class is still active, do nothing
-              ESP_LOGD("scrollnextpage", "current_page=%d is the only active one", current_page);
               return current_page;
             }
-            ESP_LOGD("scrollnextpage", "reached the end, stay at current_page=%d", current_page);
             return current_page;
       - logger.log:
           level: DEBUG
@@ -144,17 +139,6 @@ script:
       - display.page.show: page_default
       - repeat:
           count: !lambda "return id(page_next)+1;"
-              #          count: !lambda |-
-              #            uint8_t len = sizeof(id(colors)) / sizeof(Color*);
-              #            uint8_t current = id(page_current);
-              #            uint8_t next = id(page_next);
-              #            if (next > current) {
-              #              return next-current;
-              #            } else if (next == current) {
-              #              return len + 1;
-              #            } else {
-              #              return len - current + next + 1; 
-              #            }
           then:
             - display.page.show_next: notification_display
       - globals.set:
@@ -354,9 +338,11 @@ light:
     name: "Notification Light"
     id: notification_light
     entity_category: config
+    default_transition_length: 0s
+    flash_transition_length: 0.5s
     effects:
       - addressable_lambda:
-          name: "THE notification effect"
+          name: "Notification Effect"
           update_interval: 16ms
           lambda: |-
             // ---------- CONFIG START -------------
@@ -407,7 +393,6 @@ light:
               it[0] = Color::BLACK;
               cycles_until_next_color--;
             } else {
-              ESP_LOGD("notify_effect", "cunc=%d, cuce=%d, nc=%d", cycles_until_next_color, cycles_until_color_ends, notification_class);
               // there is currently a color being added
               time_t is_active = id(pending_notifications)[notification_class];
               if (is_active) {
@@ -420,29 +405,24 @@ light:
                 // continue to finish this color
                 cycles_until_color_ends--;
               } else {
-                ESP_LOGD("notify_effect", "preparing next color");
                 // prepare next color
                 cycles_until_color_ends = COLOR_WIDTH;
                 if (notification_class >= COLOR_COUNT-1) {
-                  ESP_LOGD("notify_effect", "nc >= COLOR_COUNT-1: resetting cunc");
                   // we're at notification_class >= COLOR_COUNT-1
                   // reset notification_class and prepare for full cycle
                   notification_class = 0;
                   cycles_until_next_color = BETWEEN_CYCLES;
                 } else {
-                  ESP_LOGD("notify_effect", "nc < COLOR_COUNT-1:");
                   // we're at some notification_class < COLOR_COUNT - 1
                   // find the next "non-empty" class
                   notification_class++;
                   for (; notification_class < COLOR_COUNT; notification_class++) {
                     is_active = id(pending_notifications)[notification_class];
-                    ESP_LOGD("notify_effect", "nc = %d -> is_active = %li", notification_class, is_active);
                     if (is_active) {
                       break;
                     }
                   }
                   if (notification_class < COLOR_COUNT && is_active) {
-                    ESP_LOGD("notify_effect", "found next nc: %d", notification_class);
                     // there is actually a "non-empty" class
                     // set its color and prepare small spacing
                     cycles_until_next_color = BETWEEN_COLORS;
