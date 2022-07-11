@@ -1,0 +1,3 @@
+[submodule "NotificationEgg"]
+	path = NotificationEgg
+	url = https://github.com/4cello/NotificationEgg
