@@ -6,8 +6,8 @@ esphome:
   board: nodemcu-32s
 
 packages:
-  wifi: !include fragments/common/wifi.yaml
-  device_base: !include fragments/common/device_base.yaml
+  wifi: !include fragments/common.wifi.config.yaml
+  device_base: !include fragments/common.device_base.config.yaml
 
 captive_portal:
 

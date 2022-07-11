@@ -12,8 +12,8 @@ substitutions:
   debug_duration: "60"
 
 packages:
-  wifi: !include fragments/common/wifi.yaml
-  device_base: !include fragments/common/device_base.yaml
+  wifi: !include fragments/common.wifi.config.yaml
+  device_base: !include fragments/common.device_base.config.yaml
 
 external_components:
   - source: github://pr#3625
