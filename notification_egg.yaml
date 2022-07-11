@@ -231,13 +231,13 @@ text_sensor:
       return result;
 
 font:
-  - file: "fonts/comic.ttf"
-    id: comicsans
-    size: 20
-  # gfonts://family[@weight]
   - file: "gfonts://Roboto"
-    id: roboto
+    id: roboto_32
     size: 32
+  - file: "gfonts://Roboto@900"
+    id: roboto_big
+    size: 100
+
 
 image:
   - file: "resources/notification_light/smiley.png"
@@ -284,12 +284,12 @@ display:
     pages:
       - id: page_default
         lambda: |-
-          it.image(${image_x},${image_y}, id(img_smiley), Color::WHITE, Color::BLACK);
           auto time = id(sntp_time).now();
           if (time.is_valid()) {
-            it.strftime(${text_x}+40,${text_y}, id(roboto), "%H:%M", time);
+            it.strftime(60,15, id(roboto_big), "%H", time);
+            it.strftime(60,105, id(roboto_big), "%M", time);
           } else {
-            it.print(${text_x},${text_y}, id(roboto), "not synced");
+            it.print(0,140, id(roboto_32), "not synced");
           }
       - <<: !include
           file: fragments/notification_light/display_page.config.yaml

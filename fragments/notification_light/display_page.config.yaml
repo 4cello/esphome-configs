@@ -4,5 +4,5 @@ lambda: |-
   auto t = id(notification_received)[${page_index}];
   if (t > 0) {
     auto o_time = ESPTime::from_epoch_local(t);
-    it.strftime(${text_x},${text_y}, id(roboto), "um %H:%M", o_time);
+    it.strftime(${text_x},${text_y}, id(roboto_32), "um %H:%M", o_time);
   }
