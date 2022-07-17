@@ -1,0 +1,1 @@
+<<: !include ../../../fragments/common/device_base.config.yaml
