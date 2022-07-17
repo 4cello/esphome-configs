@@ -3,5 +3,6 @@
         "*.yaml": "esphome",
         "*.cpp": "cpp",
         "*.h": "cpp"
-    }
+    },
+    "editor.tabSize": 2
 }
