@@ -1,0 +1,70 @@
+substitutions:
+  devicename:  coffeemachine-alarm
+  max_distance: "30"
+  warning_time: 10min
+  warning_duration: 2min
+
+esphome:
+  platform: ESP8266
+  board: nodemcuv2
+  name: $devicename
+  build_path: build/$devicename
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+
+web_server:
+
+logger:
+  level: INFO
+
+script:
+  - id: alarm_watchdog
+    then:
+      - if:
+          condition:
+            for:
+              time: $warning_time
+              condition:
+                sensor.in_range:
+                  id: distance
+                  above: $max_distance
+          then:
+            - rtttl.play: siren:d=8,o=5,b=100:d,e,d,e,d,e,d,e
+            - light.turn_on:
+                id: alarm_light
+                effect: "Alarm Pulse"
+            - delay: $warning_duration
+            - light.turn_off: alarm_light
+
+sensor:
+  - platform: ultrasonic
+    trigger_pin: D1
+    echo_pin: D2
+    name: Entfernung zur Kaffeetasse
+    id: distance
+
+output:
+  - id: light_gpio
+    platform: gpio
+    pin: D5
+  - id: buzzer_gpio
+    platform: esp8266_pwm
+    pin: D6
+
+rtttl:
+  output: buzzer_gpio
+
+light:
+  - id: alarm_light
+    platform: binary
+    name: Alarm Licht
+    output: light_gpio
+    effects:
+      - strobe:
+          name: "Alarm Pulse"
+          colors:
+            - state: True
+              duration: 1s
+            - state: False
+              duration: 0.5s
