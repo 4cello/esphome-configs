@@ -1,3 +1,6 @@
 [submodule "NotificationEgg"]
 	path = NotificationEgg
 	url = https://github.com/4cello/NotificationEgg
+[submodule ".\\ShopVacServo\\"]
+	path = .\\ShopVacServo\\
+	url = git@github.com:4cello/ShopVacServo.git

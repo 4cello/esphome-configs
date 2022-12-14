@@ -3,8 +3,8 @@ substitutions:
     devicename: ledcontroller_$uuid 
 
 packages:
-  wifi: !include fragments/common.wifi.config.yaml
-  device_base: !include fragments/common.device_base.config.yaml
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
 
 esphome:
   platform: ESP8266

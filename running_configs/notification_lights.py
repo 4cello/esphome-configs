@@ -40,7 +40,7 @@ ACTIONS = [
 
 class IDAction(argparse.Action):
   def __call__(self, parser, namespace, values, option_string=None):
-    if values not in IDS_WITHOUT_DISPLAY and values not in IDS_WITH_DISPLAY:
+    if values != "all" and values not in IDS_WITHOUT_DISPLAY and values not in IDS_WITH_DISPLAY:
       parser.error(f"Unknown id: {values}")
     setattr(namespace, self.dest, values)
 
@@ -52,7 +52,7 @@ class ActionAction(argparse.Action):
     setattr(namespace, self.dest, values)
 
 def dialog(given = {}):
-  config_choices = [Separator(line="With display:")] + IDS_WITH_DISPLAY + [Separator(line="Without Display:")] + IDS_WITHOUT_DISPLAY
+  config_choices = ["all", Separator(line="With display:")] + IDS_WITH_DISPLAY + [Separator(line="Without Display:")] + IDS_WITHOUT_DISPLAY
 
   q_conf = {
       "type": "list",
@@ -81,6 +81,15 @@ def dialog(given = {}):
   answers = prompt(questions, style=PROMPT_STYLE)
   return dict(given, **answers)
 
+def execute(id, action, yaml):
+  cmd = [
+    "esphome",
+    "-s", "id_code", id,
+    action,
+    yaml
+  ]
+  print(cmd)
+  subprocess.run(cmd, shell=True)
 
 def main():
   parser = argparse.ArgumentParser(description="ESPHome notification light runner")
@@ -90,16 +99,15 @@ def main():
   given = {k:v for k,v in vars(args).items() if v is not None}
 
   answers = dialog(given)
-  yaml = "notification_light.yaml" if answers["id"] in IDS_WITHOUT_DISPLAY else "notification_light_with_display.yaml"
+
   os.chdir(os.path.join(os.path.abspath(sys.path[0]), "../NotificationEgg"))
-  cmd = [
-    "esphome",
-    "-s", "id_code", answers["id"],
-    answers['action'],
-    yaml
-  ]
-  print(cmd)
-  subprocess.run(cmd, shell=True)
+  if answers["id"] == "all":
+    for id in IDS_WITHOUT_DISPLAY + IDS_WITH_DISPLAY:
+      yaml = "notification_light.yaml" if answers["id"] in IDS_WITHOUT_DISPLAY else "notification_light_with_display.yaml"
+      execute(id, answers["action"], yaml)
+  else:
+      yaml = "notification_light.yaml" if answers["id"] in IDS_WITHOUT_DISPLAY else "notification_light_with_display.yaml"
+      execute(answers["id"], answers["action"], yaml)
 
 
 if __name__ == "__main__":

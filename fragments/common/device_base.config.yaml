@@ -17,7 +17,7 @@ sensor:
   - platform: uptime
     name: $devicename Uptime Sensor
   - platform: wifi_signal
-    name: $devicename  WiFi Signal Sensor
+    name: $devicename WiFi Signal Sensor
     update_interval: 60s
 
 binary_sensor:

@@ -1,19 +1,21 @@
 substitutions:
   devicename: train_presence
+  section_1_pin: D0
+  section_2_pin: D1
+  section_3_pin: D2
+  section_4_pin: D3
+  section_5_pin: D4
+  section_6_pin: D5
+  section_7_pin: D6
+  section_8_pin: D7
 
 packages:
-  wifi: !include fragments/common.wifi.config.yaml
-  device_base: !include fragments/common.device_base.config.yaml
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
 
 esphome:
   platform: ESP8266
   board: nodemcuv2
-
-wifi:
-  manual_ip:
-    static_ip: 192.168.144.93
-    gateway: 192.168.144.1
-    subnet: 255.255.255.0
 
 # Enable logging, disable uart
 logger:
@@ -23,17 +25,63 @@ binary_sensor:
   - platform: gpio
     name: "$devicename Track Section 1"   
     pin:
-      number: D2
+      number: $section_1_pin
+    filters:
+      - delayed_on_off: 100ms
+      - invert:
+  - platform: gpio
+    name: "$devicename Track Section 2"   
+    pin:
+      number: $section_2_pin
       mode: INPUT_PULLUP
     filters:
       - delayed_on_off: 100ms
       - invert:
-    on_press:
-      - output.turn_off: status_led 
-    on_release:
-      - output.turn_on: status_led
-
-output:
   - platform: gpio
-    id: status_led
-    pin: D0
+    name: "$devicename Track Section 3"   
+    pin:
+      number: $section_3_pin
+      mode: INPUT_PULLUP
+    filters:
+      - delayed_on_off: 100ms
+      - invert:
+  - platform: gpio
+    name: "$devicename Track Section 4"   
+    pin:
+      number: $section_4_pin
+      mode: INPUT_PULLUP
+    filters:
+      - delayed_on_off: 100ms
+      - invert:
+  - platform: gpio
+    name: "$devicename Track Section 5"   
+    pin:
+      number: $section_5_pin
+      mode: INPUT_PULLUP
+    filters:
+      - delayed_on_off: 100ms
+      - invert:
+  - platform: gpio
+    name: "$devicename Track Section 6"   
+    pin:
+      number: $section_6_pin
+      mode: INPUT_PULLUP
+    filters:
+      - delayed_on_off: 100ms
+      - invert:
+  - platform: gpio
+    name: "$devicename Track Section 7"   
+    pin:
+      number: $section_7_pin
+      mode: INPUT_PULLUP
+    filters:
+      - delayed_on_off: 100ms
+      - invert:
+  - platform: gpio
+    name: "$devicename Track Section 8"   
+    pin:
+      number: $section_8_pin
+      mode: INPUT_PULLUP
+    filters:
+      - delayed_on_off: 100ms
+      - invert:

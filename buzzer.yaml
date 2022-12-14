@@ -1,0 +1,25 @@
+substitutions:
+  devicename: buzzer-test
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+esphome:
+  platform: ESP8266
+  board: d1_mini
+
+mqtt:
+  on_message:
+    topic: esphome/$devicename/rtttl
+    then:
+      - rtttl.play:
+          rtttl: !lambda return x.c_str();
+
+output:
+  - platform: esp8266_pwm
+    pin: D2
+    id: rtttl_out
+
+rtttl:
+  output: rtttl_out
