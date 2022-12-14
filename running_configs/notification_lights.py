@@ -90,9 +90,16 @@ def main():
   given = {k:v for k,v in vars(args).items() if v is not None}
 
   answers = dialog(given)
-  yaml = "notification_light.yaml" if answers["action"] in IDS_WITHOUT_DISPLAY else "notification_light_with_display.yaml"
+  yaml = "notification_light.yaml" if answers["id"] in IDS_WITHOUT_DISPLAY else "notification_light_with_display.yaml"
   os.chdir(os.path.join(os.path.abspath(sys.path[0]), "../NotificationEgg"))
-  subprocess.run(f"esphome {answers['action']} {yaml}", shell=True)
+  cmd = [
+    "esphome",
+    "-s", "id_code", answers["id"],
+    answers['action'],
+    yaml
+  ]
+  print(cmd)
+  subprocess.run(cmd, shell=True)
 
 
 if __name__ == "__main__":
