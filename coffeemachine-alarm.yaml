@@ -15,13 +15,54 @@ esphome:
     then:
       - light.turn_off: alarm_light
 
-packages:
-  wifi: !include fragments/common/wifi.config.yaml
+ota:
 
+wifi:
+  networks:
+    - ssid: !secret ssid
+      password: !secret wifi_password
+      bssid: F4:7B:09:4A:CC:48
+      hidden: True
+    - ssid: jg-hotspot
+      password: ""
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "$devicename"
+    password: !secret ap_password
+  
 web_server:
+  local: True
 
 logger:
   level: DEBUG
+
+interval:
+  - interval: 1min
+    then:
+      - if:
+          condition:
+            - for:
+                time: $no_cup_time
+                condition:
+                  sensor.in_range:
+                    id: distance
+                    above: $max_distance
+          then:
+            - script.execute: trigger_alarm
+      - if:
+          condition:
+            - for:
+                time: $cup_time
+                condition:
+                  sensor.in_range:
+                    id: distance
+                    below: $max_distance
+          then:
+            - script.execute: stop_alarm
+            - switch.turn_off: waiting_for_reset
+
+
 
 script:
   - id: trigger_alarm
@@ -29,30 +70,40 @@ script:
     then:
       - if:
           condition:
-            switch.is_off: cooling_down
+            switch.is_off: waiting_for_reset
           then:
             - rtttl.play: siren:d=8,o=5,b=100:d,e,d,e,d,e,d,e
-            - light.turn_on:
-                id: alarm_light
-                effect: "Alarm Pulse"
+            - light.turn_on: alarm_light
             - delay: $warning_duration
             - script.execute: stop_alarm
   - id: stop_alarm
     mode: single
     then:
-      - switch.turn_on: cooling_down
+      - switch.turn_on: waiting_for_reset
       - light.turn_off: alarm_light
       - rtttl.stop
 
 switch:
   - platform: template
     name: Cooling Down
-    id: cooling_down
+    id: waiting_for_reset
     optimistic: True
   - platform: template
     name: Alarm Armed
     id: armed
     optimistic: True
+    restore_mode: ALWAYS_ON
+
+binary_sensor:
+  - platform: template
+    id: cup_present
+    name: Coffee Cup Present
+    on_release:
+      - if:
+          condition:
+            switch.is_on: armed
+          then:
+            - logger.log: switch released
 
 sensor:
   - platform: ultrasonic
@@ -61,44 +112,28 @@ sensor:
     name: Entfernung zur Kaffeetasse
     id: distance
     update_interval: 1s
-    # filters:
-    #   - median:
-    #       window_size: 10
-    #       send_every: 3
-    #       send_first_at: 3
-    # on_value: 
-    #   then:
-    #     - if:
-    #         condition:
-    #           switch.is_on: armed
-    #       then:
-    #         - if:
-    #             condition:
-    #               - for:
-    #                   time: $no_cup_time
-                  
-    #                   condition:
-    #                     sensor.in_range:
-    #                       id: distance
-    #                       above: $max_distance
-    #             then:
-    #               - script.execute: trigger_alarm
-    #         - if:
-    #             condition:
-    #               - for:
-    #                   time: $cup_time
-    #                   condition:
-    #                     sensor.in_range:
-    #                       id: distance
-    #                       below: $max_distance
-    #             then:
-    #               - script.execute: stop_alarm
+    filters:
+      - lambda: |-
+          return (isnan(x)) ? 2.0 : x;
+      - median:
+          window_size: 10
+          send_every: 3
+          send_first_at: 3
+    on_value: 
+      then:
+        - lambda: |-
+            id(cup_present).publish_state(x < $max_distance);
 
 
 output:
   - id: light_gpio
     platform: gpio
     pin: D6
+  - id: builtin_led
+    platform: gpio
+    pin:
+      number: D4
+      inverted: True
   - id: buzzer_gpio
     platform: esp8266_pwm
     pin: D8
@@ -110,14 +145,4 @@ light:
   - id: alarm_light
     platform: binary
     name: Alarm Licht
-    output: light_gpio
-    effects:
-      - strobe:
-          name: "Alarm Pulse"
-          colors:
-            - state: True
-              duration: 1s
-              brightness: 100%
-            - state: False
-              duration: 0.5s
-              brightness: 0%
+    output: builtin_led # light_gpio
