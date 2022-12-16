@@ -1,14 +1,19 @@
 substitutions:
   devicename:  coffeemachine-alarm
-  max_distance: "30"
-  warning_time: 10min
-  warning_duration: 2min
+  max_distance: "0.2"
+  cup_time: 20s
+  no_cup_time: 30s
+  warning_duration: 20s
+  cooldown_time: 30s
 
 esphome:
   platform: ESP8266
-  board: nodemcuv2
+  board: d1_mini
   name: $devicename
   build_path: build/$devicename
+  on_boot: 
+    then:
+      - light.turn_off: alarm_light
 
 packages:
   wifi: !include fragments/common/wifi.config.yaml
@@ -16,41 +21,87 @@ packages:
 web_server:
 
 logger:
-  level: INFO
+  level: DEBUG
 
 script:
-  - id: alarm_watchdog
+  - id: trigger_alarm
+    mode: single
     then:
       - if:
           condition:
-            for:
-              time: $warning_time
-              condition:
-                sensor.in_range:
-                  id: distance
-                  above: $max_distance
+            switch.is_off: cooling_down
           then:
             - rtttl.play: siren:d=8,o=5,b=100:d,e,d,e,d,e,d,e
             - light.turn_on:
                 id: alarm_light
                 effect: "Alarm Pulse"
             - delay: $warning_duration
-            - light.turn_off: alarm_light
+            - script.execute: stop_alarm
+  - id: stop_alarm
+    mode: single
+    then:
+      - switch.turn_on: cooling_down
+      - light.turn_off: alarm_light
+      - rtttl.stop
+
+switch:
+  - platform: template
+    name: Cooling Down
+    id: cooling_down
+    optimistic: True
+  - platform: template
+    name: Alarm Armed
+    id: armed
+    optimistic: True
 
 sensor:
   - platform: ultrasonic
-    trigger_pin: D1
-    echo_pin: D2
+    trigger_pin: D5
+    echo_pin: D0
     name: Entfernung zur Kaffeetasse
     id: distance
+    update_interval: 1s
+    # filters:
+    #   - median:
+    #       window_size: 10
+    #       send_every: 3
+    #       send_first_at: 3
+    # on_value: 
+    #   then:
+    #     - if:
+    #         condition:
+    #           switch.is_on: armed
+    #       then:
+    #         - if:
+    #             condition:
+    #               - for:
+    #                   time: $no_cup_time
+                  
+    #                   condition:
+    #                     sensor.in_range:
+    #                       id: distance
+    #                       above: $max_distance
+    #             then:
+    #               - script.execute: trigger_alarm
+    #         - if:
+    #             condition:
+    #               - for:
+    #                   time: $cup_time
+    #                   condition:
+    #                     sensor.in_range:
+    #                       id: distance
+    #                       below: $max_distance
+    #             then:
+    #               - script.execute: stop_alarm
+
 
 output:
   - id: light_gpio
     platform: gpio
-    pin: D5
+    pin: D6
   - id: buzzer_gpio
     platform: esp8266_pwm
-    pin: D6
+    pin: D8
 
 rtttl:
   output: buzzer_gpio
@@ -66,5 +117,7 @@ light:
           colors:
             - state: True
               duration: 1s
+              brightness: 100%
             - state: False
               duration: 0.5s
+              brightness: 0%
