@@ -4,6 +4,7 @@ substitutions:
   i2c_sda: D2
   i2c_scl: D1
   ssr_output: D3
+  button_pin: D4
 
 
 packages:
@@ -15,6 +16,9 @@ esphome:
   board: d1_mini
   on_boot: 
     then:
+      - text_sensor.template.publish:
+          id: soldering_phase
+          state: "OFF"
       - climate.control: 
           id: hotplate_control
           mode: "OFF"
@@ -22,12 +26,124 @@ esphome:
 logger:
   level: DEBUG
 
+binary_sensor:
+  - platform: gpio
+    id: control_button
+    internal: True
+    pin:
+      number: $button_pin
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_click: 
+      - button.press: solder_138
+    on_multi_click: 
+      - timing:
+          - ON for at least 2s
+        then:
+          - climate.pid.autotune: hotplate_control
+    
+
+
+button:
+  - platform: template
+    id: solder_138
+    name: "Reflow Soldering 138°C"
+    icon: "mdi:heating-coil"
+    on_press: 
+      - script.execute:
+          id: reflow_solder
+          preheat_temp: 80
+          preheat_duration: 90
+          soak_temp: 110
+          soak_duration: 60
+          reflow_duration: 60
+          peak_temp: 160
+
+script:
+  - id: reflow_solder
+    parameters:
+      preheat_temp: int #80°C
+      preheat_duration: int #90-120s
+      soak_temp: int #110°C
+      soak_duration: int #30-120s
+      reflow_duration: int #60-80s
+      peak_temp: int #155-175°C
+    then:
+      - text_sensor.template.publish:
+          id: soldering_phase
+          state: "PREHEAT"
+      - sensor.template.publish:
+          id: heating_rate
+          state: !lambda |-
+            float current_temp = id(hotplate_control).current_temperature;
+            float rate = (preheat_temp - current_temp) / preheat_duration;
+            if (rate < 2.5) {
+              return rate;
+            } else {
+              preheat_duration = (int) ((preheat_temp - current_temp) / 2.5) + 1;
+              return 2.5f;
+            }
+      - repeat:
+          count: !lambda return preheat_duration;
+          then:
+            - climate.control:
+                id: hotplate_control
+                mode: HEAT
+                target_temperature: !lambda |-
+                  static float last_temperature = id(hotplate_control).current_temperature;
+                  float target = last_temperature + id(heating_rate).state;
+                  last_temperature += id(heating_rate).state;
+                  return target;
+            - delay: 1s
+      - text_sensor.template.publish:
+          id: soldering_phase
+          state: "SOAK"
+      - sensor.template.publish:
+          id: heating_rate
+          state: !lambda return (soak_temp - id(hotplate_control).current_temperature) / soak_duration;
+      - repeat:
+          count: !lambda return soak_duration;
+          then:
+            - climate.control:
+                id: hotplate_control
+                mode: HEAT
+                target_temperature: !lambda |-
+                 static float last_temperature = id(hotplate_control).current_temperature;
+                 float target = last_temperature + id(heating_rate).state;
+                 last_temperature += id(heating_rate).state;
+                 return target;
+            - delay: 1s
+      - text_sensor.template.publish:
+          id: soldering_phase
+          state: "REFLOW"
+      - sensor.template.publish:
+          id: heating_rate
+          state: 0
+      - climate.control:
+          id: hotplate_control
+          mode: HEAT
+          target_temperature: !lambda return peak_temp;
+      - delay: !lambda return reflow_duration * 1000;
+      - climate.control:
+          id: hotplate_control
+          mode: "OFF"
+      - text_sensor.template.publish:
+          id: soldering_phase
+          state: "COOLDOWN"
+
+text_sensor:
+  - platform: template
+    id: soldering_phase
+    name: "Soldering Phase"
+
 climate:
   - platform: pid
     id: hotplate_control
     name: Hot Plate
     sensor: hotplate_temperature
-    default_target_temperature: 5°C
+    default_target_temperature: 180°C
     heat_output: heater_output
     visual:
       min_temperature: 0°C
@@ -40,11 +156,9 @@ climate:
 
 
 sensor:
-  - platform: pid
-    id: hotplate_pid
-    name: Hot Plate PID
-    climate_id: hotplate_control
-    type: RESULT
+  - platform: template
+    id: heating_rate
+    unit_of_measurement: "°C/s"
   - platform: pid
     id: hotplate_pwm
     name: Hot Plate PWM
@@ -70,6 +184,21 @@ sensor:
       b_constant: 3950
       reference_temperature: 25°C
       reference_resistance: 100kOhm
+  - platform: pid
+    id: hotplate_pid_kp
+    name: Hot Plate PID Kp
+    climate_id: hotplate_control
+    type: KP
+  - platform: pid
+    id: hotplate_pid_ki
+    name: Hot Plate PID ki
+    climate_id: hotplate_control
+    type: KI
+  - platform: pid
+    id: hotplate_pid_kd
+    name: Hot Plate PID kd
+    climate_id: hotplate_control
+    type: KD
 
 output:
   - id: heater_output
