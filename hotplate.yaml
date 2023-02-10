@@ -1,0 +1,90 @@
+substitutions:
+  devicename: hotplate
+  thermistor_pin: A0
+  i2c_sda: D2
+  i2c_scl: D1
+  ssr_output: D3
+
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+esphome:
+  platform: ESP8266
+  board: d1_mini
+  on_boot: 
+    then:
+      - climate.control: 
+          id: hotplate_control
+          mode: "OFF"
+
+logger:
+  level: DEBUG
+
+climate:
+  - platform: pid
+    id: hotplate_control
+    name: Hot Plate
+    sensor: hotplate_temperature
+    default_target_temperature: 5°C
+    heat_output: heater_output
+    visual:
+      min_temperature: 0°C
+      max_temperature: 240°C
+      temperature_step: 1°C
+    control_parameters:
+      kp: 0.0
+      ki: 0.0
+      kd: 0.0
+
+
+sensor:
+  - platform: pid
+    id: hotplate_pid
+    name: Hot Plate PID
+    climate_id: hotplate_control
+    type: RESULT
+  - platform: pid
+    id: hotplate_pwm
+    name: Hot Plate PWM
+    climate_id: hotplate_control
+    type: HEAT
+  - platform: adc
+    id: thermistor_sensor
+    pin: $thermistor_pin
+    internal: False
+    update_interval: 1s
+    filters:
+      - multiply: 3.3
+  - platform: resistance
+    sensor: thermistor_sensor
+    configuration: UPSTREAM
+    resistor: 10kOhm
+    id: thermistor_resistance
+  - platform: ntc
+    name: Hot Plate Temperature
+    id: hotplate_temperature
+    sensor: thermistor_resistance
+    calibration:
+      b_constant: 3950
+      reference_temperature: 25°C
+      reference_resistance: 100kOhm
+
+output:
+  - id: heater_output
+    platform: esp8266_pwm
+    pin: $ssr_output
+
+i2c:
+  sda: $i2c_sda
+  scl: $i2c_scl
+
+display:
+  - platform: lcd_pcf8574
+    dimensions: 16x2
+    address: 0x27
+    update_interval: 0.5s
+    lambda: |-
+      it.printf("%.2f/%.2f%cC", id(hotplate_control).current_temperature, id(hotplate_control).target_temperature, 0b11011111);
+      it.printf(0,1,"%.5f PWM", id(hotplate_pwm).state);
