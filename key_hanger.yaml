@@ -1,0 +1,65 @@
+substitutions:
+  devicename: keyhanger
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+esphome:
+  platform: ESP32
+  board: seeed_xiao_esp32c3
+#  board: nodemcu-32s
+
+globals:
+  - id: resistance_error
+    type: int
+    initial_value: "10"
+  - id: red_values
+    type: int[2]
+    initial_value: "{100,220}"
+  - id: blue_values
+    type: int[2]
+    initial_value: "{220,470}"
+
+logger:
+  level: DEBUG
+
+binary_sensor:
+  - platform: template
+    name: Key RED present
+    lambda: |-
+      return (abs(id(a0_res).state - id(red_values)[0]) < id(resistance_error) &&
+          abs(id(a1_res).state - id(red_values)[1]) < id(resistance_error));
+  - platform: template
+    name: Key BLUE present
+    lambda: |-
+      return (abs(id(a0_res).state - id(blue_values)[0]) < id(resistance_error) &&
+          abs(id(a1_res).state - id(blue_values)[1]) < id(resistance_error));
+
+sensor:
+  - platform: adc
+    id: adc_a0
+    pin: 2
+    update_interval: 1s
+    attenuation: auto
+    filters:
+      - lambda: if (x >= 0.005) return x; else return 0.0;
+  - platform: resistance
+    sensor: adc_a0
+    configuration: UPSTREAM
+    resistor: 470Ohm
+    id: a0_res
+    name: A0 Resistance
+  - platform: adc
+    id: adc_a1
+    pin: 3
+    update_interval: 1s
+    attenuation: auto
+    filters:
+      - lambda: if (x >= 0.005) return x; else return 0.0;
+  - platform: resistance
+    sensor: adc_a1
+    configuration: UPSTREAM
+    resistor: 470Ohm
+    id: a1_res
+    name: A1 Resistance

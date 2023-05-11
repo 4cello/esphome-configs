@@ -1,0 +1,100 @@
+substitutions:
+  devicename: debugmonitor
+  numberLogLines: "10"
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+esphome:
+  platform: ESP8266
+  board: d1_mini
+  # includes:
+  #   - resources/uart_read_line_sensor.h
+  on_boot: 
+    priority: 800
+    then:
+      - lambda: |-
+          std::string** logs = id(loglines);
+          ESP_LOGD("onboot", "id(loglines) = %p", logs);
+          for (uint8_t i = 0; i < $numberLogLines; i++) {
+            logs[i] = new std::string();
+            String content = String(i);
+            logs[i]->append(content.c_str());
+            ESP_LOGD("onboot", "the_string* = %p", logs[i]);
+          }
+
+globals:
+  - id: loglines
+    type: std::string**
+    initial_value: new std::string*[$numberLogLines]
+  - id: firstLine
+    type: uint8_t
+
+api:
+  services:
+    - service: update_nextion
+      then:
+        - lambda: 'return; //id(the_display)->upload_tft();'
+
+script:
+  - id: printLines
+    then:
+      - lambda: |-
+          std::string** currentString = id(loglines);
+          for (uint8_t i = 0; i < $numberLogLines; i++) {
+            std::string* currentLine = *currentString;
+            ESP_LOGI("loglines", "%s%i: '%s' (%p)",
+              (i == id(firstLine)) ? ">" : " ",
+              i,
+              currentLine->c_str(),
+              currentString);
+            currentString++;
+          }
+
+logger:
+  level: DEBUG
+
+uart:
+  - id: uart_nextion
+    baud_rate: 9600
+    rx_pin: D1
+    tx_pin: D2
+    debug:
+      direction: BOTH
+      dummy_receiver: true
+      after:
+        delimiter: \n
+      sequence:
+        - lambda: UARTDebug::log_string(direction, bytes);
+        - lambda: |-
+            uint8_t lastLine = (id(firstLine) + $numberLogLines - 1) % $numberLogLines;
+            std::string** currentPointer = id(loglines) + lastLine;
+            std::string* currentLine = *currentPointer;
+            currentLine->clear();
+            currentLine->append((char*)bytes.data(), bytes.size()-1);
+            ESP_LOGD("uartdebug_insert", "index %i, pointer %p, value %s", lastLine, currentLine, currentLine->c_str());
+            id(firstLine) = (id(firstLine) + 1) % $numberLogLines;
+        - script.execute: printLines
+  # - id: input_uart
+  #   baud_rate: 9600
+  #   rx_pin: RX
+  #   tx_pin: TX
+
+# text_sensor:
+# - platform: custom
+#   lambda: |-
+#     auto my_custom_sensor = new UartReadLineSensor(id(uart_nextion));
+#     App.register_component(my_custom_sensor);
+#     return {my_custom_sensor};
+#   text_sensors:
+#     id: "uart_readline"
+
+#display:
+#  - platform: nextion
+#    id: the_display
+#    uart_id: uart_nextion
+#    tft_url: http://192.168.144.2/local/tft/debugscreen.tft
+#    lambda: |-
+#      return;
+

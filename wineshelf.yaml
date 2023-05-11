@@ -1,0 +1,32 @@
+substitutions:
+  devicename: wineshelf
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+esphome:
+  platform: ESP32
+  board: seeed_xiao_esp32c3
+
+light:
+  - platform: neopixelbus
+    variant: WS2812
+    pin: GPIO1
+    num_leds: 10
+    type: RGB
+    color_correct: [80%, 80%, 80%]
+    name: "Wine Shelf Light"
+    id: wineshelf_light
+    effects:
+      - addressable_rainbow:
+  - platform: binary
+    name: "Blinky"
+    output: blink_output
+    effects:
+      - strobe
+
+output:
+  - id: blink_output
+    platform: gpio
+    pin: GPIO10

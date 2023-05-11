@@ -1,0 +1,48 @@
+substitutions:
+  devicename: midi-keyboard
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+esphome:
+  platform: ESP8266
+  board: d1_mini
+  
+external_components:
+    - source:
+        type: git
+        url: https://github.com/muxa/esphome-midi
+
+logger:
+  level: DEBUG
+
+uart:
+  baud_rate: 31250
+  rx_pin: D5
+  tx_pin: D6
+
+# sensor:
+#   - platform: template
+#     name: "Pressed Note"
+#     id: pressed_note
+
+midi_in:
+  - channel: 1
+    on_channel_message:
+      - lambda: |-
+          if (x.type == midi::MidiType::NoteOn) {
+            ESP_LOGD("midi_in", "Note ON: %#02x (channel %i)", x.data1, x.channel);
+          }
+      - logger.log:
+          format: "%i: %#04x (%#04x %#04x)"
+          args: [ 'x.channel', 'x.type', 'x.data1', 'x.data2' ]
+      # - sensor.template.publish:
+      #     id: pressed_note
+      #     state: !lambda |-
+      #       if (x.type == midi::MidiType::NoteOn) {
+      #         return x.data1;
+      #       } else if (x.type == midi::MidiType::NoteOff) {
+      #         return 0;
+      #       }
+      #       return {};

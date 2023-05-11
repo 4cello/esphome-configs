@@ -1,0 +1,53 @@
+substitutions:
+  devicename: led-keyboard
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+esphome:
+  platform: ESP8266
+  board: d1_mini
+  
+logger:
+  level: DEBUG
+
+external_components:
+    - source:
+        type: git
+        url: https://github.com/muxa/esphome-midi
+
+uart:
+  baud_rate: 31250
+  rx_pin: D5
+  tx_pin: D6
+
+# sensor:
+#   - platform: template
+#     name: "Pressed Note"
+#     id: pressed_note
+
+midi_in:
+  - channel: 1
+    on_channel_message:
+      - logger.log:
+          format: "%i: %#04x (%#04x %#04x)"
+          args: [ 'x.channel', 'x.type', 'x.data1', 'x.data2' ]
+          level: WARN
+
+light:
+  - platform: neopixelbus
+    variant: 800KBPS
+    pin: D8
+    num_leds: 4
+    type: RGB
+    name: "Keyboard LED Strip"
+    effects:
+      - addressable_rainbow:
+      - addressable_scan:
+          move_interval: 500ms
+          scan_width: 1
+      - addressable_twinkle:
+      - addressable_random_twinkle:
+      - addressable_fireworks:
+      - addressable_flicker:

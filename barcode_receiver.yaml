@@ -1,0 +1,88 @@
+substitutions:
+  devicename: barcodereceiver
+  barcode_mac: FF:0F:F5:45:B9:32
+
+esphome:
+  platform: ESP32
+  board: seeed_xiao_esp32c3
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+logger:
+  level: DEBUG
+
+# Enable Bluetooth support
+esp32_ble_tracker:
+
+ble_client:
+  - mac_address: $barcode_mac
+    id: ble_reader
+    on_connect:
+      then:
+        - lambda: |-
+            ESP_LOGD("ble_client_lambda", "Connected to BLE device");
+  
+text_sensor:
+  - platform: ble_client
+    #type: characteristic
+    ble_client_id: ble_reader
+    name: "The BLE characteristic"
+    service_uuid: "1812"
+    characteristic_uuid: "2a4d"
+    update_interval: 100ms
+    
+
+# text_sensor:
+#   - platform: template
+#     id: ble_keyboard_input
+#     name: "Bluetooth Keyboard Input"
+    
+# switch:
+#   - platform: template
+#     id: ble_keyboard_pairing
+#     name: "Bluetooth Keyboard Pairing"
+#     icon: "mdi:bluetooth-connect"
+#     optimistic: true
+
+#     # Define the custom component
+# custom_component:
+#   - lambda: |-
+#       # Import necessary libraries
+#       from esphome.components import ble_client
+#       from esphome.components import text_sensor
+#       from esphome.components import switch
+      
+#       # Define the Bluetooth service UUID for HID devices
+#       HID_SERVICE_UUID = "1812"
+      
+#       # Define the callback function to receive HID reports
+#       def hid_report_callback(report):
+#           text_sensor.publish("ble_keyboard_input", report.hex())
+      
+#       # Create a BLE client for the keyboard
+#       ble_client.new_ble_client("ble_keyboard", HID_SERVICE_UUID, hid_report_callback)
+      
+#       # Define a switch to initiate pairing mode
+#       switch_paired = switch.Switch()
+#       switch_paired.name = "Bluetooth Keyboard Pairing"
+#       switch_paired.icon = "mdi:bluetooth-connect"
+      
+#       # Define the callback function to initiate pairing mode
+#       def start_pairing_mode():
+#           ble_client.start_pairing_mode(HID_SERVICE_UUID)
+      
+#       switch_paired.turn_on_action = switch.CallAction(start_pairing_mode)
+#       switch_paired.turn_off_action = switch.DoNothingAction()
+      
+#       # Add the switch to the custom component
+#       switch.add(switch_paired)
+
+#       return {
+#         "id": "ble_keyboard",
+#         "lambda": None,
+#         "component_type": "CUSTOM_ESP32_BLE_KEYBOARD",
+#         "text_sensors": ["ble_keyboard_input"],
+#         "switches": ["ble_keyboard_pairing"]
+#       }
