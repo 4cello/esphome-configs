@@ -1,0 +1,62 @@
+---
+
+substitutions:
+    devicename: qrcode 
+
+packages:
+  wifi: !include fragments/common/wifi.config.yaml
+  device_base: !include fragments/common/device_base.config.yaml
+
+esphome:
+  includes:
+    - qrcode.h
+
+logger:
+  logs:
+    component: ERROR
+
+esp32:
+  board: seeed_xiao_esp32c3
+
+i2c:
+  sda: GPIO6
+  scl: GPIO7
+  scan: true
+  id: bus_i2c
+
+uart:
+  id: bus_uart
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+  baud_rate: 115200
+
+font:
+  - file: "gfonts://Roboto"
+    id: roboto_20
+    size: 20
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    rotation: 0
+    id: my_display
+    lambda: |-
+      it.printf(0, 0, id(roboto_20), "Hello, qrcode!");
+
+sensor:
+  - platform: custom
+    lambda: |-
+      auto qr = new QRCodeUART();
+      App.register_component(qr);
+      return {};
+    sensors: []
+    
+text_sensor:
+  - platform: custom
+    lambda: |-
+      auto qr = new QRCodeUART();
+      App.register_component(qr);
+      return {qr->qr_text};
+    text_sensors:
+      name: "QR Code"
